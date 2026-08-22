@@ -119,3 +119,19 @@ The pull-request validation subsequently completed with all eight checks green:
 This connected-CI evidence supersedes the earlier local registry and Docker limitations for the
 committed revision. Hosted runtime, Langfuse trace export, Cloudflare DNS and the live demo smoke
 test still require owner-controlled infrastructure and credentials.
+
+## Italian production deployment guide review (2026-08-22)
+
+The Italian production runbook was checked against `.env.example`, both Compose files, the
+LiteLLM configuration, Dockerfiles, API health/SSE routes, the real smoke script, security and
+FinOps documentation. The review identified and documented that the smoke script does not test
+SSE/rejection itself, the current Langfuse adapter does not export remote traces, and the
+floating Langfuse v4 images must be reconciled with the official release before production.
+Same-origin Next.js API proxying and a production Compose port-reset override were added so the
+documented Cloudflare Tunnel can expose only `web` while API and infrastructure remain private.
+
+Official-document URL checks were attempted from this environment on 2026-08-22, but its outbound
+proxy rejected every request with HTTP 403. Consequently the guide labels online version and
+price verification as an operator gate rather than claiming it was completed. Local validation
+results for the guide are recorded in the implementing commit and must be complemented by the
+owner-run Docker, DNS, live tunnel, restore and smoke checks described in the runbook.
