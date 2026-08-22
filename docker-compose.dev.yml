@@ -1,0 +1,16 @@
+services:
+  api:
+    environment: {APP_ENV: development}
+    volumes: [./apps/api:/app]
+  web:
+    environment: {NODE_ENV: development}
+  langfuse-web:
+    profiles: [observability]
+  langfuse-worker:
+    profiles: [observability]
+  clickhouse:
+    profiles: [observability]
+  redis:
+    profiles: [observability]
+  minio:
+    profiles: [observability]

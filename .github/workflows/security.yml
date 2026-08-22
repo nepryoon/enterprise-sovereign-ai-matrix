@@ -1,0 +1,32 @@
+name: Security
+on:
+  pull_request:
+  schedule: [{cron: '23 4 * * 1'}]
+  workflow_dispatch:
+permissions: {contents: read, security-events: write}
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install pip-audit && pip install -e './apps/api'
+      - run: pip check
+      - name: Produce Python vulnerability report
+        run: pip-audit --format=json --output=pip-audit.json || true
+      - uses: actions/setup-node@v4
+        with: {node-version-file: apps/web/.nvmrc}
+      - run: cd apps/web && npm install --no-audit --no-fund
+      - name: Produce npm vulnerability report
+        run: cd apps/web && npm audit --json > ../../npm-audit.json || true
+      - name: Scan repository for high-confidence secrets
+        run: python scripts/scan-secrets.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-audit
+          path: |
+            pip-audit.json
+            npm-audit.json
+          if-no-files-found: ignore

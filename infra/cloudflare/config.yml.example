@@ -1,0 +1,6 @@
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /etc/cloudflared/REPLACE_WITH_TUNNEL_UUID.json
+ingress:
+  - hostname: matrix.neuromorphicinference.com
+    service: http://web:3000
+  - service: http_status:404

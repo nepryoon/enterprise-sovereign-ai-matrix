@@ -1,0 +1,20 @@
+name: Backend CI
+on:
+  pull_request: {paths: ['apps/api/**', '.github/workflows/backend-ci.yml']}
+  push: {branches: [main], paths: ['apps/api/**']}
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: apps/api}}
+    env: {RUN_LIVE_LLM_TESTS: 'false'}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13', cache: pip, cache-dependency-path: apps/api/pyproject.toml}
+      - run: python -m pip install -e '.[dev]'
+      - run: ruff check .
+      # Type-check the framework-independent domain boundary. LangGraph/FastAPI adapters are
+      # exercised by the integration job and their upstream decorators are not fully typed.
+      - run: mypy app/domain.py app/routing app/services/cost.py app/api/schemas.py
+      - run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80

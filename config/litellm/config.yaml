@@ -1,0 +1,37 @@
+model_list:
+  - model_name: fast
+    litellm_params:
+      model: openai/gpt-4.1-nano
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 30
+  - model_name: balanced
+    litellm_params:
+      model: openai/gpt-4.1-mini
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 45
+  - model_name: reasoning
+    litellm_params:
+      model: openai/o4-mini
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 90
+  - model_name: sovereign
+    litellm_params:
+      model: ollama/qwen2.5:1.5b-instruct-q4_K_M
+      api_base: os.environ/OLLAMA_BASE_URL
+      timeout: 120
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  retry_after: 1
+  allowed_fails: 2
+  cooldown_time: 30
+  fallbacks:
+    - fast: [balanced]
+# Deliberately no sovereign fallback: sensitive work fails closed.
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: false
+litellm_settings:
+  request_timeout: 120
+  set_verbose: false
+  drop_params: true

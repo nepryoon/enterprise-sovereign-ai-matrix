@@ -1,0 +1,25 @@
+name: Technical Task
+about: Track an engineering work unit
+body:
+  - type: textarea
+    attributes: {label: Context}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Objective}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Scope}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Acceptance Criteria}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Tests}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Dependencies}
+  - type: textarea
+    attributes: {label: Risks}
+  - type: textarea
+    attributes: {label: Definition of Done}
+    validations: {required: true}
