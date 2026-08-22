@@ -23,8 +23,10 @@ def test_high_risk_interrupt_api_approval_resume(client):
     response = create(client, "HIGH_RISK", "Assess whether a production deployment should proceed")
     body = response.json()
     assert body["status"] == "WAITING_APPROVAL"
-    approved = client.post(f"/api/v1/executions/{body['execution_id']}/approve",
-                           json={"actor": "operator", "reason": "Canary controls verified"})
+    approved = client.post(
+        f"/api/v1/executions/{body['execution_id']}/approve",
+        json={"actor": "operator", "reason": "Canary controls verified"},
+    )
     assert approved.status_code == 200
     assert approved.json()["status"] == "COMPLETED"
     assert approved.json()["result"] == "APPROVED"
@@ -32,8 +34,10 @@ def test_high_risk_interrupt_api_approval_resume(client):
 
 def test_rejection_takes_explicit_cancel_path(client):
     body = create(client, "HIGH_RISK", "Assess production deletion change").json()
-    rejected = client.post(f"/api/v1/executions/{body['execution_id']}/reject",
-                           json={"actor": "operator", "reason": "Risk is unacceptable"})
+    rejected = client.post(
+        f"/api/v1/executions/{body['execution_id']}/reject",
+        json={"actor": "operator", "reason": "Risk is unacceptable"},
+    )
     assert rejected.json()["status"] == "CANCELLED"
     assert rejected.json()["result"] == "REJECTED"
 
@@ -62,7 +66,10 @@ def test_events_persist_and_sse_replays(client):
     body = create(client).json()
     events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
     assert {e["event_type"] for e in events} >= {
-        "execution.started", "agent.started", "routing.selected", "execution.completed"
+        "execution.started",
+        "agent.started",
+        "routing.selected",
+        "execution.completed",
     }
     with client.stream("GET", f"/api/v1/executions/{body['execution_id']}/stream") as response:
         content = "".join(response.iter_text())
@@ -74,8 +81,10 @@ def test_validation_and_not_found(client):
     assert client.post("/api/v1/executions", json={"request": "tiny"}).status_code == 422
     assert client.get("/api/v1/executions/00000000-0000-0000-0000-000000000000").status_code == 404
 
+
 def test_checkpoint_resume_after_application_restart(tmp_path):
     from fastapi.testclient import TestClient
+
     from app.config import Settings
     from app.main import create_app
 
@@ -84,7 +93,9 @@ def test_checkpoint_resume_after_application_restart(tmp_path):
     body = create(first, "HIGH_RISK", "Assess production firewall replacement").json()
     assert body["status"] == "WAITING_APPROVAL"
     second = TestClient(create_app(settings))
-    resumed = second.post(f"/api/v1/executions/{body['execution_id']}/approve",
-                          json={"actor": "operator", "reason": "Recovery checkpoint validated"})
+    resumed = second.post(
+        f"/api/v1/executions/{body['execution_id']}/approve",
+        json={"actor": "operator", "reason": "Recovery checkpoint validated"},
+    )
     assert resumed.status_code == 200
     assert resumed.json()["status"] == "COMPLETED"

@@ -38,9 +38,13 @@ class DeterministicFakeInference:
             raise TimeoutError("Deterministic inference timeout")
         output = self.RESPONSES[selected]
         return ModelInvocation(
-            model_class=route.model_class, provider=route.provider, model=route.model,
-            latency_ms=25, prompt_tokens=max(1, len(prompt.split())),
-            completion_tokens=len(output.split()), output=output,
+            model_class=route.model_class,
+            provider=route.provider,
+            model=route.model,
+            latency_ms=25,
+            prompt_tokens=max(1, len(prompt.split())),
+            completion_tokens=len(output.split()),
+            output=output,
         )
 
 
@@ -54,16 +58,24 @@ class LiteLLMInference:
             response = httpx.post(
                 f"{self.base_url}/v1/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
-                json={"model": route.model, "messages": [{"role": "user", "content": prompt}],
-                      "temperature": 0}, timeout=self.timeout,
+                json={
+                    "model": route.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0,
+                },
+                timeout=self.timeout,
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise ProviderUnavailableError(f"Inference gateway unavailable: {type(exc).__name__}") from exc
+            raise ProviderUnavailableError(
+                f"Inference gateway unavailable: {type(exc).__name__}"
+            ) from exc
         data = response.json()
         usage = data.get("usage", {})
         return ModelInvocation(
-            model_class=route.model_class, provider=route.provider, model=route.model,
+            model_class=route.model_class,
+            provider=route.provider,
+            model=route.model,
             latency_ms=round((time.monotonic() - started) * 1000),
             prompt_tokens=int(usage.get("prompt_tokens", 0)),
             completion_tokens=int(usage.get("completion_tokens", 0)),

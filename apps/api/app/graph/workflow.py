@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable, TypedDict
+from collections.abc import Callable
+from typing import Any, TypedDict
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -34,9 +35,14 @@ NodeObserver = Callable[[str, str, WorkflowState], None]
 
 
 class WorkflowEngine:
-    def __init__(self, inference: InferenceClient, routing: RoutingPolicy,
-                 observer: NodeObserver | None = None, checkpointer: Any | None = None,
-                 sovereign_available: bool = True) -> None:
+    def __init__(
+        self,
+        inference: InferenceClient,
+        routing: RoutingPolicy,
+        observer: NodeObserver | None = None,
+        checkpointer: Any | None = None,
+        sovereign_available: bool = True,
+    ) -> None:
         self.inference = inference
         self.routing = routing
         self.observer = observer or (lambda _event, _node, _state: None)
@@ -54,12 +60,15 @@ class WorkflowEngine:
                 raise
             self.observer("agent.completed", name, {**state, **result})
             return result
+
         return node
 
     def _build(self):
         builder = StateGraph(WorkflowState)
         builder.add_node("ingest_request", self._observed("ingest-request", self._ingest))
-        builder.add_node("classify_sensitivity", self._observed("sensitivity-classifier", self._classify))
+        builder.add_node(
+            "classify_sensitivity", self._observed("sensitivity-classifier", self._classify)
+        )
         builder.add_node("triage", self._observed("triage-agent", self._triage))
         builder.add_node("risk_analysis", self._observed("risk-analysis", self._analyse))
         builder.add_node("policy_evaluation", self._observed("policy-evaluator", self._policy))
@@ -71,10 +80,16 @@ class WorkflowEngine:
         builder.add_edge("classify_sensitivity", "triage")
         builder.add_edge("triage", "risk_analysis")
         builder.add_edge("risk_analysis", "policy_evaluation")
-        builder.add_conditional_edges("policy_evaluation", self._approval_route,
-                                      {"approval": "approval_interrupt", "finalise": "finalise"})
-        builder.add_conditional_edges("approval_interrupt", self._decision_route,
-                                      {"approved": "finalise", "rejected": "reject"})
+        builder.add_conditional_edges(
+            "policy_evaluation",
+            self._approval_route,
+            {"approval": "approval_interrupt", "finalise": "finalise"},
+        )
+        builder.add_conditional_edges(
+            "approval_interrupt",
+            self._decision_route,
+            {"approved": "finalise", "rejected": "reject"},
+        )
         builder.add_edge("finalise", END)
         builder.add_edge("reject", END)
         return builder.compile(checkpointer=self.checkpointer)
@@ -114,8 +129,11 @@ class WorkflowEngine:
         )
         route = self.routing.select(context)
         invocation = self.inference.invoke(state["request"], route, state["scenario"])
-        return {"current_node": "risk_analysis", "route": route.model_dump(mode="json"),
-                "invocation": invocation.model_dump(mode="json")}
+        return {
+            "current_node": "risk_analysis",
+            "route": route.model_dump(mode="json"),
+            "invocation": invocation.model_dump(mode="json"),
+        }
 
     @staticmethod
     def _policy(state: WorkflowState) -> dict[str, Any]:
@@ -123,22 +141,30 @@ class WorkflowEngine:
         if output.startswith("{invalid"):
             raise ValueError("Malformed inference response")
         high = "HIGH" in output or state["criticality"] == Criticality.HIGH
-        return {"current_node": "policy_evaluation",
-                "risk_level": (RiskLevel.HIGH if high else RiskLevel.LOW).value,
-                "approval_required": high}
+        return {
+            "current_node": "policy_evaluation",
+            "risk_level": (RiskLevel.HIGH if high else RiskLevel.LOW).value,
+            "approval_required": high,
+        }
 
     @staticmethod
     def _approval(state: WorkflowState) -> dict[str, Any]:
-        decision = interrupt({
-            "execution_id": state["execution_id"],
-            "requested_action": "Authorise production infrastructure change",
-            "risk_level": state["risk_level"],
-            "reason": "High-risk policy threshold reached",
-            "evidence": [state["invocation"]["output"]],
-            "recommended_decision": "Review controls before approval",
-        })
-        return {"current_node": "approval_interrupt", "approved": bool(decision["approved"]),
-                "operator": str(decision["actor"]), "operator_reason": str(decision["reason"])}
+        decision = interrupt(
+            {
+                "execution_id": state["execution_id"],
+                "requested_action": "Authorise production infrastructure change",
+                "risk_level": state["risk_level"],
+                "reason": "High-risk policy threshold reached",
+                "evidence": [state["invocation"]["output"]],
+                "recommended_decision": "Review controls before approval",
+            }
+        )
+        return {
+            "current_node": "approval_interrupt",
+            "approved": bool(decision["approved"]),
+            "operator": str(decision["actor"]),
+            "operator_reason": str(decision["reason"]),
+        }
 
     @staticmethod
     def _approval_route(state: WorkflowState) -> str:
@@ -160,9 +186,10 @@ class WorkflowEngine:
         return self.graph.invoke(state, config=self.config(state["execution_id"]))
 
     def resume(self, execution_id: str, approved: bool, actor: str, reason: str) -> dict[str, Any]:
-        return self.graph.invoke(Command(resume={"approved": approved, "actor": actor,
-                                                  "reason": reason}),
-                                 config=self.config(execution_id))
+        return self.graph.invoke(
+            Command(resume={"approved": approved, "actor": actor, "reason": reason}),
+            config=self.config(execution_id),
+        )
 
     def snapshot(self, execution_id: str) -> WorkflowState:
         return self.graph.get_state(self.config(execution_id)).values

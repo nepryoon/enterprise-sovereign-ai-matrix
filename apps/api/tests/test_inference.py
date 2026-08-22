@@ -6,8 +6,13 @@ from app.domain import ModelClass, ProviderUnavailableError, RoutingDecision
 
 @pytest.fixture
 def route():
-    return RoutingDecision(model_class=ModelClass.FAST, provider="fake", model="fast",
-                           reason="test", fallback_allowed=False)
+    return RoutingDecision(
+        model_class=ModelClass.FAST,
+        provider="fake",
+        model="fast",
+        reason="test",
+        fallback_allowed=False,
+    )
 
 
 def test_fake_is_deterministic(route):

@@ -24,7 +24,9 @@ class TraceAdapter:
         try:
             if self.client:
                 with self.client.start_as_current_observation(
-                    as_type="span", name=name, metadata=safe,
+                    as_type="span",
+                    name=name,
+                    metadata=safe,
                 ):
                     self.client.update_current_trace(
                         session_id=execution_id,

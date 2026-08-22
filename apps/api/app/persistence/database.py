@@ -51,8 +51,13 @@ class Repository:
             if row:
                 row.payload, row.updated_at = payload, execution.updated_at
             else:
-                session.add(ExecutionRow(execution_id=str(execution.execution_id), payload=payload,
-                                         updated_at=execution.updated_at))
+                session.add(
+                    ExecutionRow(
+                        execution_id=str(execution.execution_id),
+                        payload=payload,
+                        updated_at=execution.updated_at,
+                    )
+                )
             session.commit()
 
     def get_execution(self, execution_id: UUID) -> Execution | None:
@@ -62,31 +67,49 @@ class Repository:
 
     def add_event(self, event: TelemetryEvent) -> None:
         with self._lock, Session(self.engine) as session:
-            session.add(EventRow(event_id=str(event.event_id), execution_id=str(event.execution_id),
-                                 timestamp=event.timestamp, payload=event.model_dump_json()))
+            session.add(
+                EventRow(
+                    event_id=str(event.event_id),
+                    execution_id=str(event.execution_id),
+                    timestamp=event.timestamp,
+                    payload=event.model_dump_json(),
+                )
+            )
             session.commit()
 
     def events(self, execution_id: UUID, after_id: str | None = None) -> list[TelemetryEvent]:
         with Session(self.engine) as session:
-            rows = session.scalars(select(EventRow).where(
-                EventRow.execution_id == str(execution_id)).order_by(EventRow.timestamp)).all()
+            rows = session.scalars(
+                select(EventRow)
+                .where(EventRow.execution_id == str(execution_id))
+                .order_by(EventRow.timestamp)
+            ).all()
         events = [TelemetryEvent.model_validate_json(row.payload) for row in rows]
         if after_id:
             ids = [str(event.event_id) for event in events]
             if after_id in ids:
-                events = events[ids.index(after_id) + 1:]
+                events = events[ids.index(after_id) + 1 :]
         return events
 
     def add_audit(self, event: AuditEvent) -> None:
         with self._lock, Session(self.engine) as session:
-            session.add(AuditRow(event_id=str(event.event_id), execution_id=str(event.execution_id),
-                                 timestamp=event.timestamp, payload=event.model_dump_json()))
+            session.add(
+                AuditRow(
+                    event_id=str(event.event_id),
+                    execution_id=str(event.execution_id),
+                    timestamp=event.timestamp,
+                    payload=event.model_dump_json(),
+                )
+            )
             session.commit()
 
     def audits(self, execution_id: UUID) -> list[AuditEvent]:
         with Session(self.engine) as session:
-            rows = session.scalars(select(AuditRow).where(
-                AuditRow.execution_id == str(execution_id)).order_by(AuditRow.timestamp)).all()
+            rows = session.scalars(
+                select(AuditRow)
+                .where(AuditRow.execution_id == str(execution_id))
+                .order_by(AuditRow.timestamp)
+            ).all()
         return [AuditEvent.model_validate_json(row.payload) for row in rows]
 
     def health(self) -> bool:

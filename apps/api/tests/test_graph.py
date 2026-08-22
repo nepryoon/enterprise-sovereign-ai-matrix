@@ -6,12 +6,18 @@ from app.routing.policy import RoutingPolicy
 
 
 def engine():
-    return WorkflowEngine(DeterministicFakeInference(), RoutingPolicy(), checkpointer=InMemorySaver())
+    return WorkflowEngine(
+        DeterministicFakeInference(), RoutingPolicy(), checkpointer=InMemorySaver()
+    )
 
 
 def state(scenario, request="Assess a routine documentation change"):
-    return {"execution_id": scenario, "correlation_id": "correlation", "request": request,
-            "scenario": scenario}
+    return {
+        "execution_id": scenario,
+        "correlation_id": "correlation",
+        "request": request,
+        "scenario": scenario,
+    }
 
 
 def test_low_risk_transition():

@@ -9,8 +9,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request,
-                       call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -25,8 +26,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.limit = limit
         self.requests: dict[str, deque[float]] = defaultdict(deque)
 
-    async def dispatch(self, request: Request,
-                       call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         if request.method == "POST":
             now = time.monotonic()
             key = request.client.host if request.client else "unknown"

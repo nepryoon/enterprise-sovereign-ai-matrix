@@ -24,29 +24,56 @@ class RoutingContext:
 class RoutingPolicy:
     def select(self, context: RoutingContext) -> RoutingDecision:
         sensitive = context.sensitivity in {
-            DataSensitivity.PII, DataSensitivity.RESTRICTED, DataSensitivity.SOVEREIGN
+            DataSensitivity.PII,
+            DataSensitivity.RESTRICTED,
+            DataSensitivity.SOVEREIGN,
         }
         if sensitive:
             if not context.sovereign_available:
-                raise ProviderUnavailableError("Sovereign inference unavailable; cloud fallback denied")
-            return self._decision(ModelClass.SOVEREIGN, "ollama", "sovereign",
-                                  "Sensitive data requires local processing", False)
+                raise ProviderUnavailableError(
+                    "Sovereign inference unavailable; cloud fallback denied"
+                )
+            return self._decision(
+                ModelClass.SOVEREIGN,
+                "ollama",
+                "sovereign",
+                "Sensitive data requires local processing",
+                False,
+            )
         if context.criticality is Criticality.HIGH or context.reasoning_required:
             if not context.reasoning_available:
                 raise ProviderUnavailableError("Approved reasoning provider unavailable")
-            return self._decision(ModelClass.REASONING, "litellm", "reasoning",
-                                  "High criticality requires enhanced reasoning", False)
+            return self._decision(
+                ModelClass.REASONING,
+                "litellm",
+                "reasoning",
+                "High criticality requires enhanced reasoning",
+                False,
+            )
         if context.criticality is Criticality.MEDIUM:
-            return self._decision(ModelClass.BALANCED, "litellm", "balanced",
-                                  "Standard internal analysis", True)
+            return self._decision(
+                ModelClass.BALANCED, "litellm", "balanced", "Standard internal analysis", True
+            )
         if not context.fast_available:
-            return self._decision(ModelClass.BALANCED, "litellm", "balanced",
-                                  "Fast provider unavailable; policy-approved fallback", False)
-        return self._decision(ModelClass.FAST, "litellm", "fast",
-                              "Low-criticality public workload", True)
+            return self._decision(
+                ModelClass.BALANCED,
+                "litellm",
+                "balanced",
+                "Fast provider unavailable; policy-approved fallback",
+                False,
+            )
+        return self._decision(
+            ModelClass.FAST, "litellm", "fast", "Low-criticality public workload", True
+        )
 
     @staticmethod
-    def _decision(model_class: ModelClass, provider: str, model: str, reason: str,
-                  fallback: bool) -> RoutingDecision:
-        return RoutingDecision(model_class=model_class, provider=provider, model=model,
-                               reason=reason, fallback_allowed=fallback)
+    def _decision(
+        model_class: ModelClass, provider: str, model: str, reason: str, fallback: bool
+    ) -> RoutingDecision:
+        return RoutingDecision(
+            model_class=model_class,
+            provider=provider,
+            model=model,
+            reason=reason,
+            fallback_allowed=fallback,
+        )

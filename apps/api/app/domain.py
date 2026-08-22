@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ExecutionStatus(StrEnum):
@@ -70,10 +70,17 @@ class RoutingError(DomainError):
 
 TRANSITIONS: dict[ExecutionStatus, frozenset[ExecutionStatus]] = {
     ExecutionStatus.QUEUED: frozenset({ExecutionStatus.RUNNING, ExecutionStatus.CANCELLED}),
-    ExecutionStatus.RUNNING: frozenset({ExecutionStatus.WAITING_APPROVAL, ExecutionStatus.COMPLETED,
-                                        ExecutionStatus.FAILED, ExecutionStatus.CANCELLED}),
-    ExecutionStatus.WAITING_APPROVAL: frozenset({ExecutionStatus.RUNNING, ExecutionStatus.FAILED,
-                                                 ExecutionStatus.CANCELLED}),
+    ExecutionStatus.RUNNING: frozenset(
+        {
+            ExecutionStatus.WAITING_APPROVAL,
+            ExecutionStatus.COMPLETED,
+            ExecutionStatus.FAILED,
+            ExecutionStatus.CANCELLED,
+        }
+    ),
+    ExecutionStatus.WAITING_APPROVAL: frozenset(
+        {ExecutionStatus.RUNNING, ExecutionStatus.FAILED, ExecutionStatus.CANCELLED}
+    ),
     ExecutionStatus.COMPLETED: frozenset(),
     ExecutionStatus.FAILED: frozenset(),
     ExecutionStatus.CANCELLED: frozenset(),

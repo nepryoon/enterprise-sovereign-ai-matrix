@@ -14,7 +14,8 @@ jobs:
       - run: pip install pip-audit && pip install -e './apps/api'
       - run: pip-audit
       - uses: actions/setup-node@v4
-        with: {node-version-file: apps/web/.nvmrc, cache: npm, cache-dependency-path: apps/web/package-lock.json}
-      - run: cd apps/web && npm ci && npm audit --audit-level=high
+        with: {node-version-file: apps/web/.nvmrc}
+      - run: cd apps/web && npm install --no-audit --no-fund
+      - run: cd apps/web && npm audit --audit-level=high
       - uses: gitleaks/gitleaks-action@v2
         env: {GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}

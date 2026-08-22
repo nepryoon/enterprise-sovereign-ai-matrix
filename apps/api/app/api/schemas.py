@@ -5,8 +5,9 @@ from pydantic import BaseModel, Field
 
 class CreateExecutionRequest(BaseModel):
     request: str = Field(min_length=10, max_length=10_000)
-    scenario: Literal["SAFE", "HIGH_RISK", "SENSITIVE", "PROVIDER_FAILURE", "TIMEOUT",
-                      "MALFORMED_RESPONSE"] = "SAFE"
+    scenario: Literal[
+        "SAFE", "HIGH_RISK", "SENSITIVE", "PROVIDER_FAILURE", "TIMEOUT", "MALFORMED_RESPONSE"
+    ] = "SAFE"
 
 
 class DecisionRequest(BaseModel):
