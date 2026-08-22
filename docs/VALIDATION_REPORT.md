@@ -102,3 +102,20 @@ The lint toolchain itself is aligned end-to-end: Next.js 15's legacy configurati
 ESLint 8.57.1 and the direct `eslint` CLI. This removes both incompatible combinations previously
 attempted (`.eslintrc` with ESLint 9 and `next lint` across changing Next CLI behaviour). ESLint 9
 will be adopted together with Next.js 16 and native flat configuration.
+
+## Connected CI result
+
+The pull-request validation subsequently completed with all eight checks green:
+
+- Backend lint, targeted type-check, tests and coverage;
+- first-party API and web container builds;
+- frontend lint;
+- frontend Vitest suite;
+- frontend TypeScript check;
+- frontend production build;
+- API/persistence integration suite;
+- dependency reports, package consistency and secret scanning.
+
+This connected-CI evidence supersedes the earlier local registry and Docker limitations for the
+committed revision. Hosted runtime, Langfuse trace export, Cloudflare DNS and the live demo smoke
+test still require owner-controlled infrastructure and credentials.
