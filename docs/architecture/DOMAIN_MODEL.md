@@ -1,0 +1,3 @@
+# Domain model
+
+`Execution` is the aggregate root and carries immutable execution/correlation identifiers, timestamps, status, risk, sensitivity and current node. `AgentRun` records node outcome and invocation metrics. `Decision` captures policy evidence. `ApprovalRequest` and `ApprovalDecision` form the governed HITL record. `RoutingDecision` explains model-class selection. `ModelInvocation` and `CostRecord` contain provider metadata, tokens, latency and estimated EUR cost. `TelemetryEvent` provides the versioned replay/SSE contract. `AuditEvent` is append-only. `TraceReference` links an execution, agent and Langfuse trace without embedding sensitive prompts.

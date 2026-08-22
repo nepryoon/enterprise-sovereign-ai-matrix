@@ -1,0 +1,13 @@
+name: Docker
+on:
+  pull_request: {paths: ['apps/**/Dockerfile', 'docker-compose*.yml', 'config/**']}
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+      - run: docker compose build api web

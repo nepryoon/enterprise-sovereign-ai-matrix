@@ -1,0 +1,20 @@
+name: Security
+on:
+  pull_request:
+  schedule: [{cron: '23 4 * * 1'}]
+  workflow_dispatch:
+permissions: {contents: read, security-events: write}
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install pip-audit && pip install -e './apps/api'
+      - run: pip-audit
+      - uses: actions/setup-node@v4
+        with: {node-version-file: apps/web/.nvmrc, cache: npm, cache-dependency-path: apps/web/package-lock.json}
+      - run: cd apps/web && npm ci && npm audit --audit-level=high
+      - uses: gitleaks/gitleaks-action@v2
+        env: {GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}
