@@ -97,6 +97,7 @@ The Compose stack includes web, API, PostgreSQL, LiteLLM, Ollama, Langfuse, Clic
 
 - [Local development](docs/operations/LOCAL_DEVELOPMENT.md)
 - [Hetzner-compatible deployment](docs/operations/DEPLOYMENT.md)
+- [Guida completa al deployment di produzione (italiano)](docs/operations/PRODUCTION_DEPLOYMENT_GUIDE_IT.md)
 - [Cloudflare Tunnel and `matrix.neuromorphicinference.com`](docs/operations/CLOUDFLARE.md)
 - [Troubleshooting](docs/operations/TROUBLESHOOTING.md)
 
