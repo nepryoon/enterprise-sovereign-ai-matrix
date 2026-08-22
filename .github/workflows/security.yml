@@ -21,8 +21,12 @@ jobs:
       # High-severity advisories are reviewed in the scheduled report; only critical
       # vulnerabilities block this low-cost PoC until a lockfile is generated in connected CI.
       - run: cd apps/web && npm audit --audit-level=critical
-      - uses: gitleaks/gitleaks-action@v2
-        env: {GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'}
+      # The official action requires a commercial licence for organisations. Run the pinned
+      # open-source scanner image directly so secret scanning remains blocking and reproducible.
+      - name: Scan repository for secrets
+        run: >-
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.2
+          detect --source=/repo --no-git --redact --exit-code=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

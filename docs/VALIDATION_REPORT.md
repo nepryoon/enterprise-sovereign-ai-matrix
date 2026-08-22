@@ -46,3 +46,10 @@ After backend and integration became green while all three npm-consuming jobs co
 at approximately the dependency-install duration, ADR-009 replaced the unavailable proposed
 Next.js 16.3 artifacts with an exact, compatible Next.js 15.5.7 / React 19.1.1 baseline. The
 matching ESLint compatibility configuration is restored for that release line.
+
+The subsequent PR run exposed the concrete frontend packaging defect: the repository's generic
+Python `lib/` ignore rule had silently excluded `apps/web/lib/api.ts` and
+`apps/web/lib/telemetry.ts`, although committed components and tests imported both modules. The
+ignore exception and both typed modules are now committed. The licensed organisation-mode
+Gitleaks action was also replaced with the pinned open-source scanner image while retaining a
+blocking exit code.
