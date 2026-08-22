@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -58,7 +58,7 @@ class WorkflowEngine:
             except Exception:
                 self.observer("agent.failed", name, state)
                 raise
-            self.observer("agent.completed", name, {**state, **result})
+            self.observer("agent.completed", name, cast(WorkflowState, {**state, **result}))
             return result
 
         return node
