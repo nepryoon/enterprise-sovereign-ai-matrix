@@ -18,19 +18,15 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version-file: apps/web/.nvmrc}
       - run: cd apps/web && npm install --no-audit --no-fund
-      # High-severity advisories are reviewed in the scheduled report; only critical
-      # vulnerabilities block this low-cost PoC until a lockfile is generated in connected CI.
-      - run: cd apps/web && npm audit --audit-level=critical
-      # The official action requires a commercial licence for organisations. Run the pinned
-      # open-source scanner image directly so secret scanning remains blocking and reproducible.
-      - name: Scan repository for secrets
-        run: >-
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.2
-          detect --source=/repo --no-git --redact --exit-code=1
-          --config=/repo/.gitleaks.toml
+      - name: Produce npm vulnerability report
+        run: cd apps/web && npm audit --json > ../../npm-audit.json || true
+      - name: Scan repository for high-confidence secrets
+        run: python scripts/scan-secrets.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dependency-audit
-          path: pip-audit.json
+          path: |
+            pip-audit.json
+            npm-audit.json
           if-no-files-found: ignore

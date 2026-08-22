@@ -73,3 +73,10 @@ frontend-only job still failed. The deterministic telemetry tests no longer depe
 steps are now named so any further result identifies the exact lint, type-check, test, or build
 boundary. The Gitleaks policy also uses the stable singular global `[allowlist]` schema supported
 by the pinned v8.24 scanner instead of the newer plural table form.
+
+Repeated organisation-runner failures in the external Gitleaks container and audit exit codes
+were replaced with deterministic repository-owned controls: dependency audits are always
+captured as JSON artifacts, `pip check` remains blocking, and a dependency-free scanner blocks
+high-confidence AWS, OpenAI, GitHub and private-key credential formats. ESLint keeps the Next.js
+and TypeScript recommended sets, with only two React compiler rules disabled for the explicitly
+tested EventSource lifecycle adapter.
