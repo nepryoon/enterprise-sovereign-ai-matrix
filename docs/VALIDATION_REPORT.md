@@ -38,7 +38,11 @@ The CI definitions now include the previously missing Node version file, avoid l
 commands when no lockfile can be produced in this restricted workspace, and execute concrete
 API/persistence integration tests rather than an empty marker selection.
 
-The follow-up hardening also replaces the legacy Next.js ESLint compatibility layer, avoids
-mutating refs during render, removes a secret-shaped example value from reference material,
-and uploads a non-blocking Python vulnerability report while retaining blocking package
-consistency, critical npm vulnerability, and Gitleaks checks.
+The follow-up hardening avoids mutating refs during render, removes a secret-shaped example
+value from reference material, and uploads a non-blocking Python vulnerability report while
+retaining blocking package consistency, critical npm vulnerability, and Gitleaks checks.
+
+After backend and integration became green while all three npm-consuming jobs continued to fail
+at approximately the dependency-install duration, ADR-009 replaced the unavailable proposed
+Next.js 16.3 artifacts with an exact, compatible Next.js 15.5.7 / React 19.1.1 baseline. The
+matching ESLint compatibility configuration is restored for that release line.
