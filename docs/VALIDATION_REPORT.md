@@ -9,6 +9,7 @@ Evidence recorded on 2026-08-22 in the autonomous build workspace. Success is ne
 | `git diff --check` | PASS | No whitespace errors in the integrated patch. |
 | `ruff check apps/api` | PASS | CI lint failures were reproduced locally and all reported import, modernisation, and line-length violations were fixed. |
 | `ruff format --check apps/api` | PASS | All 32 Python source and test files conform to the configured formatter. |
+| `mypy --config-file=/dev/null --ignore-missing-imports --check-untyped-defs --python-version 3.13 apps/api/app` | PASS | Reproduced and fixed the TypedDict expansion error; connected CI retains stricter checks for the framework-independent domain boundary. |
 | `ruby -e "require 'yaml'; ... YAML.load_file(...)"` | PASS | Compose and all GitHub workflow YAML files parse successfully with aliases enabled. |
 | `rg -n '\b(TODO\|FIXME\|NotImplementedError)\b\|(^\|[[:space:]])pass([[:space:]]\|$)' apps docs scripts README.md` | PASS for implementation | Matches only normative words in copied reference/build-plan prose; no unfinished core implementation. |
 | `uv sync --extra dev` | BLOCKED | The environment proxy rejects the PyPI tunnel; required distributions are not cached, so pytest, Ruff, and mypy could not execute. |
@@ -36,3 +37,8 @@ Paid provider calls remain disabled by default during every check.
 The CI definitions now include the previously missing Node version file, avoid lockfile-only
 commands when no lockfile can be produced in this restricted workspace, and execute concrete
 API/persistence integration tests rather than an empty marker selection.
+
+The follow-up hardening also replaces the legacy Next.js ESLint compatibility layer, avoids
+mutating refs during render, removes a secret-shaped example value from reference material,
+and uploads a non-blocking Python vulnerability report while retaining blocking package
+consistency, critical npm vulnerability, and Gitleaks checks.

@@ -3,7 +3,8 @@ import { useEffect, useRef } from "react";
 import { API_URL } from "@/lib/api";
 import type { TelemetryEvent } from "@/types";
 export function useExecutionStream(id: string | null, onEvent: (event: TelemetryEvent) => void, onConnection: (state: "connecting" | "connected" | "reconnecting" | "error") => void) {
-  const handler = useRef(onEvent); handler.current = onEvent;
+  const handler = useRef(onEvent);
+  useEffect(() => { handler.current = onEvent; }, [onEvent]);
   useEffect(() => {
     if (!id) return;
     onConnection("connecting");

@@ -278,7 +278,7 @@ router_settings:
   model_group_alias: { "gpt-4": "gpt-4" }
 
 general_settings:
-  master_key: sk-master-key-goes-here
+  master_key: ${LITELLM_MASTER_KEY}
   database_url: "sqlite:///./litellm_logs.db"  # per logging locale
 
 # Abilita cache o policy di fallback se serve
