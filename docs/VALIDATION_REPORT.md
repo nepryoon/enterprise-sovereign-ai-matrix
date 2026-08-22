@@ -86,3 +86,10 @@ overrides were removed from ESLint, Testing Library now performs explicit cleanu
 test, and API tests use deterministic fetch-compatible response doubles rather than relying on
 jsdom to provide the optional Fetch `Response` constructor. Lint, type-check, Vitest and build
 all remain blocking steps.
+
+The frontend check continued to stop before the later named phases, isolating the failure to the
+ESLint entry point. Next.js 15.5 still ships its framework-aware (deprecated, but supported)
+`next lint` command; the frontend now uses that command with the matching legacy `.eslintrc.json`
+format. This avoids mixing ESLint 9 flat-config semantics with the Next.js 15 compatibility
+package. The migration to native flat configuration is deferred until the separately tested
+Next.js 16 upgrade.
