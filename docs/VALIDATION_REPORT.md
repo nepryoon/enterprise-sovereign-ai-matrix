@@ -87,9 +87,18 @@ test, and API tests use deterministic fetch-compatible response doubles rather t
 jsdom to provide the optional Fetch `Response` constructor. Lint, type-check, Vitest and build
 all remain blocking steps.
 
-The frontend check continued to stop before the later named phases, isolating the failure to the
-ESLint entry point. Next.js 15.5 still ships its framework-aware (deprecated, but supported)
-`next lint` command; the frontend now uses that command with the matching legacy `.eslintrc.json`
-format. This avoids mixing ESLint 9 flat-config semantics with the Next.js 15 compatibility
-package. The migration to native flat configuration is deferred until the separately tested
-Next.js 16 upgrade.
+The frontend check continued to stop before the later phases, isolating the failure to the ESLint
+entry point rather than the production build. The final toolchain uses the direct ESLint 8 CLI
+with Next.js 15's matching legacy `.eslintrc.json`; native flat configuration is deferred until
+the separately tested Next.js 16 upgrade.
+
+Because the GitHub summary continued to collapse all four frontend phases into one `validate`
+result, the workflow is now decomposed into independently blocking `lint`, `typecheck`, `test`
+and `build` jobs. This does not waive or duplicate away any control; it makes the failing boundary
+observable in the check name and allows independent reruns. Each job uses the same pinned Node
+and exact package manifest.
+
+The lint toolchain itself is aligned end-to-end: Next.js 15's legacy configuration is paired with
+ESLint 8.57.1 and the direct `eslint` CLI. This removes both incompatible combinations previously
+attempted (`.eslintrc` with ESLint 9 and `next lint` across changing Next CLI behaviour). ESLint 9
+will be adopted together with Next.js 16 and native flat configuration.
