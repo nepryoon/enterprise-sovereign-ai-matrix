@@ -77,6 +77,12 @@ by the pinned v8.24 scanner instead of the newer plural table form.
 Repeated organisation-runner failures in the external Gitleaks container and audit exit codes
 were replaced with deterministic repository-owned controls: dependency audits are always
 captured as JSON artifacts, `pip check` remains blocking, and a dependency-free scanner blocks
-high-confidence AWS, OpenAI, GitHub and private-key credential formats. ESLint keeps the Next.js
-and TypeScript recommended sets, with only two React compiler rules disabled for the explicitly
-tested EventSource lifecycle adapter.
+high-confidence AWS, OpenAI, GitHub and private-key credential formats. ESLint keeps the complete
+Next.js Core Web Vitals and TypeScript recommended sets.
+
+Security subsequently became green, validating the repository-owned scanner and audit artifacts.
+The remaining frontend failure is addressed without weakening its gate: unsupported rule-name
+overrides were removed from ESLint, Testing Library now performs explicit cleanup after every
+test, and API tests use deterministic fetch-compatible response doubles rather than relying on
+jsdom to provide the optional Fetch `Response` constructor. Lint, type-check, Vitest and build
+all remain blocking steps.
