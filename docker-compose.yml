@@ -29,6 +29,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
+      HOSTNAME: "0.0.0.0"
     ports: ["3000:3000"]
     depends_on:
       api: {condition: service_healthy}
@@ -72,7 +73,7 @@ services:
     networks: [internal]
     healthcheck: {test: [CMD-SHELL, "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"], interval: 10s, timeout: 5s, retries: 10}
   litellm:
-    image: ghcr.io/berriai/litellm:main-v1.96.0-stable
+    image: ghcr.io/berriai/litellm:v1.94.0
     restart: unless-stopped
     command: [--config, /app/config.yaml, --port, "4000"]
     environment: {LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}", OPENAI_API_KEY: "${OPENAI_API_KEY:-}", OLLAMA_BASE_URL: "http://ollama:11434"}
@@ -126,7 +127,9 @@ services:
     image: cloudflare/cloudflared:2025.8.1
     profiles: [tunnel]
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
     depends_on: {web: {condition: service_healthy}}
     networks: [edge]
 networks:
