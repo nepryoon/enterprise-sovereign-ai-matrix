@@ -20,8 +20,9 @@ registry baseline for the connected CI environment.
 
 ## Decision
 
-Pin Next.js and `eslint-config-next` to 15.5.7 and React/React DOM to 19.1.1. Retain Node.js
-22.19.0, strict TypeScript, ESLint 9, App Router and the existing application contract. Use the
+Pin Next.js and `eslint-config-next` to 15.5.7 and React/React DOM to 19.1.1. Pin the verified
+Node.js LTS patch 22.18.0 consistently in `.nvmrc` and every Docker build stage. Retain strict
+TypeScript, ESLint 9, App Router and the existing application contract. Use the
 matching legacy-to-flat ESLint compatibility adapter supplied for this Next.js line.
 
 ## Consequences

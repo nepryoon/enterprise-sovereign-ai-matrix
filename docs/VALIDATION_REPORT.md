@@ -53,3 +53,8 @@ Python `lib/` ignore rule had silently excluded `apps/web/lib/api.ts` and
 ignore exception and both typed modules are now committed. The licensed organisation-mode
 Gitleaks action was also replaced with the pinned open-source scanner image while retaining a
 blocking exit code.
+
+When all three Node-consuming checks continued to stop at the same setup duration, the remaining
+shared dependency was the arbitrarily selected Node 22.19.0 patch. It is now pinned to the known
+LTS artifact 22.18.0 in both `.nvmrc` and all three Docker stages, matching the committed Node
+type definitions.
