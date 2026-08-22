@@ -1,0 +1,20 @@
+title = "Enterprise Sovereign AI secret scanning policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documentation contracts and research contain inert example syntax"
+paths = [
+  '''(^|/)BUILD_SPEC\.md$''',
+  '''(^|/)docs/reference/''',
+  '''(^|/)reference/''',
+]
+
+[[allowlists]]
+description = "Committed environment template contains placeholders, never credentials"
+paths = ['''(^|/)\.env\.example$''']
+regexes = [
+  '''change-me(?:-[a-z0-9-]+)?''',
+  '''local-development-key''',
+]

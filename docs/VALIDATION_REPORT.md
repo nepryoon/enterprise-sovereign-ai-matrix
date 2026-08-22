@@ -58,3 +58,11 @@ When all three Node-consuming checks continued to stop at the same setup duratio
 shared dependency was the arbitrarily selected Node 22.19.0 patch. It is now pinned to the known
 LTS artifact 22.18.0 in both `.nvmrc` and all three Docker stages, matching the committed Node
 type definitions.
+
+The Docker build then passed, proving that Node resolution, npm installation, TypeScript and the
+Next.js production build are sound. The remaining frontend-only failure is isolated to ESLint,
+so the configuration now uses the native flat-config exports supported by the pinned Next.js
+release rather than translating legacy configuration with `FlatCompat`. Security scanning now
+uses an explicit Gitleaks policy that allowlists only inert reference documents and placeholder
+values in `.env.example`; source code and all other files remain subject to the blocking default
+rules.
