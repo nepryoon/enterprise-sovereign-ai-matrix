@@ -66,3 +66,10 @@ release rather than translating legacy configuration with `FlatCompat`. Security
 uses an explicit Gitleaks policy that allowlists only inert reference documents and placeholder
 values in `.env.example`; source code and all other files remain subject to the blocking default
 rules.
+
+The next run kept Docker green, confirming the production frontend remains valid, while the
+frontend-only job still failed. The deterministic telemetry tests no longer depend on
+`crypto.randomUUID()`, which is not implemented consistently by jsdom's `Crypto` surface. CI
+steps are now named so any further result identifies the exact lint, type-check, test, or build
+boundary. The Gitleaks policy also uses the stable singular global `[allowlist]` schema supported
+by the pinned v8.24 scanner instead of the newer plural table form.

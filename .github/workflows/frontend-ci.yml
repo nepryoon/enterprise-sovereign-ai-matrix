@@ -12,7 +12,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version-file: apps/web/.nvmrc}
       - run: npm install --no-audit --no-fund
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+      - name: Lint frontend
+        run: npm run lint
+      - name: Type-check frontend
+        run: npm run typecheck
+      - name: Test frontend
+        run: npm test
+      - name: Build frontend
+        run: npm run build
