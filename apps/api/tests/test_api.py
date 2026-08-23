@@ -1,5 +1,25 @@
 def create(client, scenario="SAFE", text="Assess a routine public documentation change"):
-    return client.post("/api/v1/executions", json={"request": text, "scenario": scenario})
+    return client.post("/api/v1/executions?wait=true", json={"request": text, "scenario": scenario})
+
+
+def test_async_creation_returns_queued_before_workflow_completion(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from app.config import Settings
+    from app.main import create_app
+
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path}/async.db",
+        inference_mode="fake",
+        demo_step_delay_ms=40,
+    )
+    with TestClient(create_app(settings)) as async_client:
+        response = async_client.post(
+            "/api/v1/executions",
+            json={"request": "Assess a routine public documentation change", "scenario": "SAFE"},
+        )
+        assert response.status_code == 201
+        assert response.json()["status"] == "QUEUED"
 
 
 def test_health_and_security_headers(client):
@@ -40,6 +60,8 @@ def test_rejection_takes_explicit_cancel_path(client):
     )
     assert rejected.json()["status"] == "CANCELLED"
     assert rejected.json()["result"] == "REJECTED"
+    reloaded = client.get(f"/api/v1/executions/{body['execution_id']}").json()
+    assert reloaded["status"] == "CANCELLED"
 
 
 def test_duplicate_approval_conflict(client):
@@ -82,6 +104,33 @@ def test_validation_and_not_found(client):
     assert client.get("/api/v1/executions/00000000-0000-0000-0000-000000000000").status_code == 404
 
 
+def test_history_filters_pagination_and_authoritative_routing(client):
+    safe = create(client).json()
+    create(client, "HIGH_RISK", "Assess whether a production deployment should proceed")
+    page = client.get("/api/v1/executions", params={"scenario": "SAFE", "page_size": 1}).json()
+    assert page["total"] == 1
+    assert page["items"][0]["execution_id"] == safe["execution_id"]
+    route = client.get(f"/api/v1/executions/{safe['execution_id']}/routing").json()["items"][0]
+    assert route["model"] == "fast"
+    assert route["route_reason"]
+    assert route["placement"] == "eu-api"
+
+
+def test_only_invoking_agent_has_model_and_cost_telemetry(client):
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    metered = [event for event in events if event["prompt_tokens"] is not None]
+    assert len(metered) == 1
+    assert metered[0]["agent_id"] == "risk-analysis"
+    assert metered[0]["estimated_cost_eur"] is not None
+    sequences = [event["sequence"] for event in events]
+    assert sequences == list(range(1, len(events) + 1))
+    metrics = client.get("/api/v1/observability/metrics").json()
+    assert metrics["invocation_count"] == 1
+    assert metrics["prompt_tokens"] == metered[0]["prompt_tokens"]
+    assert metrics["estimated_cost_eur"] == metered[0]["estimated_cost_eur"]
+
+
 def test_checkpoint_resume_after_application_restart(tmp_path):
     from fastapi.testclient import TestClient
 
@@ -92,6 +141,7 @@ def test_checkpoint_resume_after_application_restart(tmp_path):
     first = TestClient(create_app(settings))
     body = create(first, "HIGH_RISK", "Assess production firewall replacement").json()
     assert body["status"] == "WAITING_APPROVAL"
+    before = first.get(f"/api/v1/executions/{body['execution_id']}/events").json()
     second = TestClient(create_app(settings))
     resumed = second.post(
         f"/api/v1/executions/{body['execution_id']}/approve",
@@ -99,3 +149,6 @@ def test_checkpoint_resume_after_application_restart(tmp_path):
     )
     assert resumed.status_code == 200
     assert resumed.json()["status"] == "COMPLETED"
+    after = second.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    assert sum(event["event_type"] == "routing.selected" for event in after) == 1
+    assert len(after) > len(before)

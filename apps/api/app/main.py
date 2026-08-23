@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from fastapi import FastAPI
@@ -42,12 +43,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         broker,
         engine,
         TraceAdapter(bool(settings.langfuse_public_key and settings.langfuse_secret_key)),
+        demo_step_delay_ms=(
+            settings.demo_step_delay_ms if settings.inference_mode == "fake" else 0
+        ),
     )
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        yield
+        execution_service.shutdown()
+
     app = FastAPI(
         title="Enterprise Sovereign AI Decision Matrix",
         version="1.0.0",
         docs_url="/api/docs",
         redoc_url=None,
+        lifespan=lifespan,
     )
     app.state.container = Container(repository, broker, engine, execution_service)
     app.add_middleware(SecurityHeadersMiddleware)

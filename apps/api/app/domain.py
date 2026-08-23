@@ -198,6 +198,7 @@ class AuditEvent(BaseModel):
 class TelemetryEvent(BaseModel):
     schema_version: str = "1.0"
     event_id: UUID = Field(default_factory=uuid4)
+    sequence: int = Field(default=0, ge=0)
     execution_id: UUID
     correlation_id: UUID
     timestamp: datetime = Field(default_factory=utcnow)
@@ -206,6 +207,11 @@ class TelemetryEvent(BaseModel):
     status: str | None = None
     model_class: ModelClass | None = None
     provider: str | None = None
+    model: str | None = None
+    placement: str | None = None
+    route_reason: str | None = None
+    fallback_allowed: bool | None = None
+    policy_outcome: str | None = None
     latency_ms: int | None = None
     prompt_tokens: int | None = None
     completion_tokens: int | None = None

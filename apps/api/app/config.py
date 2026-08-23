@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     rate_limit_per_minute: int = 60
+    demo_step_delay_ms: int = 0
+    executor_workers: int = 2
 
     @field_validator("inference_mode")
     @classmethod

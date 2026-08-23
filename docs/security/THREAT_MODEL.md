@@ -11,6 +11,7 @@ Execution requests, approvals, audit history, provider keys and restricted data 
 - Sensitive telemetry: redact payloads and export metadata only for restricted work.
 - Gateway exposure: LiteLLM/Ollama/data services live only on the internal network; keys are not browser-visible.
 - Container compromise: non-root application images, dropped capabilities/no-new-privileges, no Docker socket.
-- Availability: rate limits, health checks, durable checkpoints; sovereign outage fails closed.
+- Availability: rate limits and health checks; sovereign outage fails closed. The in-memory graph
+  checkpoint is not restart durable, so live-provider resume after process loss is denied.
 
 Residual PoC risks are single-host failure, edge identity dependence and CPU inference latency. This showcase is not certified for regulated production workloads.

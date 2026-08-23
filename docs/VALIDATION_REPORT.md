@@ -1,5 +1,32 @@
 # Validation report
 
+## Flagship V2 replacement-environment validation (2026-08-23)
+
+The persisted Codex worktree supplied the previous five logical commits as a single commit
+`01be677`; the earlier local SHA `f795aa3` and its individual commit objects were not present.
+The complete flagship diff was verified against parent `5bda646` rather than reconstructed.
+
+| Command | Result | Context / limitation |
+|---|---|---|
+| `npm ci --offline --no-audit --no-fund` | PASS | Reinstalled the exact committed lockfile from cache. |
+| `npm run lint` | PASS | Next.js/TypeScript ESLint gate. |
+| `npm run typecheck` | PASS | Strict TypeScript compilation. |
+| `npm test` | PASS | 4 suites and 16 tests, including Escape and matrix keyboard/filter regressions. |
+| `npm run build` | PASS | Six requested App Router surfaces built; `/` first-load JS 113 kB. |
+| HTTP smoke for six routes | PASS | Production server returned 200 for `/`, Runs/detail, Governance, Observability and Architecture. |
+| `ruff check apps/api/app apps/api/tests` | PASS | Backend and tests lint clean. |
+| `python -m compileall -q apps/api/app apps/api/tests` | PASS | Backend and tests compile on Python 3.14.4. |
+| `python scripts/scan-secrets.py` | PASS | Four high-confidence credential rules. |
+| `npm audit --offline --audit-level=high` | PASS | Local npm advisory cache reported zero vulnerabilities. |
+| `python -m pip install -e '.[dev]'` | BLOCKED | PyPI proxy returned 403 while resolving pinned Hatchling. |
+| Backend `pytest --cov=app --cov-fail-under=80` | BLOCKED | FastAPI, SQLAlchemy, LangGraph and pytest-cov cannot be installed without registry access. |
+| `make compose-config` / image builds | BLOCKED | Docker/Compose is absent. |
+| `make security` | BLOCKED | `pip-audit` cannot be installed; repository secret scan and offline npm audit passed separately. |
+| Browser/Axe/Lighthouse/screenshots | BLOCKED | No browser binary; package/browser downloads return 403. |
+| `git fetch origin` / `git ls-remote origin` | BLOCKED | GitHub proxy returned 403; no native GitHub tool was exposed to the task. |
+
+No merge or deployment was performed.
+
 Evidence recorded on 2026-08-22 in the autonomous build workspace. Success is never inferred from configuration alone.
 
 | Command | Result | Context / limitation |

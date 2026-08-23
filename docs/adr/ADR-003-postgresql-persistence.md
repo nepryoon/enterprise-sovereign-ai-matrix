@@ -13,4 +13,6 @@ Use PostgreSQL 16 for demo and production persistence.
 
 ## Consequences
 
-One durable transactional store supports executions, audits and checkpoints. SQLite is not a production/demo path.
+One durable transactional store supports application executions, audits and ordered telemetry.
+Graph checkpoints remain process-local memory pending a supported PostgreSQL saver migration;
+SQLite remains limited to development and tests.
