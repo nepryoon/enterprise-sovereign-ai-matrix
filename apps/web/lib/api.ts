@@ -1,6 +1,6 @@
 import type { Execution, TelemetryEvent } from "@/types";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -41,3 +41,8 @@ export function decide(
     body: JSON.stringify({ actor: "operator", reason }),
   });
 }
+export interface ExecutionPage { items: Execution[]; total: number; page: number; page_size: number }
+export interface MetricsSummary { invocation_count: number; prompt_tokens: number; completion_tokens: number; estimated_cost_eur: number; latency_ms: number }
+export function listExecutions(params="page=1&page_size=25") { return request<ExecutionPage>(`/executions?${params}`); }
+export function getMetrics() { return request<MetricsSummary>("/observability/metrics"); }
+export function getPendingApprovals() { return request<{items:Execution[];total:number}>("/governance/approvals"); }

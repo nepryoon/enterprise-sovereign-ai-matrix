@@ -17,7 +17,7 @@ jobs:
         run: pip-audit --format=json --output=pip-audit.json || true
       - uses: actions/setup-node@v4
         with: {node-version-file: apps/web/.nvmrc}
-      - run: cd apps/web && npm install --no-audit --no-fund
+      - run: cd apps/web && npm ci --no-audit --no-fund
       - name: Produce npm vulnerability report
         run: cd apps/web && npm audit --json > ../../npm-audit.json || true
       - name: Scan repository for high-confidence secrets

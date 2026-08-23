@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from time import sleep
 from typing import Any
 from uuid import UUID
 
@@ -25,16 +27,170 @@ from app.telemetry.broker import EventBroker
 
 
 class ExecutionService:
+    AGENT_BRIEFINGS: dict[str, tuple[str, str, list[str]]] = {
+        "ingest-request": (
+            "scope-architecture",
+            (
+                "Request normalised. Establish the affected system boundary "
+                "before collecting assessments."
+            ),
+            ["request:synthetic-change"],
+        ),
+        "scope-architecture": (
+            "sensitivity-classifier",
+            (
+                "System boundary mapped. Validate whether the described control-plane data "
+                "has residency constraints."
+            ),
+            ["scope:affected-services"],
+        ),
+        "sensitivity-classifier": (
+            "threat-classifier",
+            (
+                "Sensitivity classification recorded. Threat analysis must respect "
+                "the selected residency policy."
+            ),
+            ["policy:data-residency-v1"],
+        ),
+        "threat-classifier": (
+            "triage-agent",
+            (
+                "Threat surface reviewed. Privileged access and rollback exposure "
+                "require operational triage."
+            ),
+            ["assessment:threat-surface"],
+        ),
+        "cost-envelope": (
+            "finops-assessment",
+            (
+                "Cost envelope opened. Reconcile only persisted invocation telemetry "
+                "against this boundary."
+            ),
+            ["budget:showcase-envelope"],
+        ),
+        "triage-agent": (
+            "architecture-assessment",
+            "Criticality triaged. Assess coupling, blast radius and rollback isolation next.",
+            ["assessment:criticality"],
+        ),
+        "architecture-assessment": (
+            "risk-analysis",
+            (
+                "Architecture review complete. Route the risk synthesis under "
+                "the classified policy constraints."
+            ),
+            ["assessment:architecture"],
+        ),
+        "risk-analysis": (
+            "compliance-assessment",
+            (
+                "Model-backed risk synthesis complete. Validate its recommendation "
+                "against accountability controls."
+            ),
+            ["inference:risk-analysis"],
+        ),
+        "compliance-assessment": (
+            "finops-assessment",
+            (
+                "Control obligations mapped. Cost optimisation must not weaken "
+                "residency or approval controls."
+            ),
+            ["assessment:compliance"],
+        ),
+        "finops-assessment": (
+            "resilience-assessment",
+            (
+                "Invocation cost reconciled. Confirm operational resilience before "
+                "challenging the combined case."
+            ),
+            ["telemetry:invocation-cost"],
+        ),
+        "resilience-assessment": (
+            "challenge-agent",
+            (
+                "Recovery and rollback posture assessed. Challenge the unresolved "
+                "security, cost and continuity trade-off."
+            ),
+            ["assessment:resilience"],
+        ),
+        "challenge-agent": (
+            "policy-evaluator",
+            (
+                "Material trade-off identified: speed of change conflicts with rollback assurance. "
+                "Apply policy before decision."
+            ),
+            ["challenge:material-trade-off"],
+        ),
+        "policy-evaluator": (
+            "approval-gate",
+            (
+                "Policy evaluation complete. Escalate high-risk outcomes "
+                "to an accountable human operator."
+            ),
+            ["policy:human-accountability-v1"],
+        ),
+        "decision-finaliser": (
+            "operator",
+            "Decision record finalised with routing, evidence, cost and operator lineage.",
+            ["decision:final-record"],
+        ),
+        "decision-rejector": (
+            "operator",
+            (
+                "Decision rejected. Execution cancelled and the operator rationale "
+                "retained in audit lineage."
+            ),
+            ["decision:rejection-record"],
+        ),
+    }
+
     def __init__(
         self,
         repository: Repository,
         broker: EventBroker,
         engine: WorkflowEngine,
         traces: TraceAdapter,
+        demo_step_delay_ms: int = 0,
     ) -> None:
         self.repository, self.broker, self.engine, self.traces = repository, broker, engine, traces
         self.costs = CostCalculator()
+        self.demo_step_delay_ms = max(0, demo_step_delay_ms)
+        # Deliberately single-node and process-local. Persisted QUEUED work is not a
+        # distributed or restart-safe job queue.
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="matrix-workflow")
         engine.observer = self.observe_node
+
+    def create_queued(self, request: str, scenario: str = "SAFE") -> Execution:
+        execution = Execution(request=request, scenario=scenario)
+        execution.trace_id = self.traces.trace_id(str(execution.execution_id))
+        self.repository.save_execution(execution)
+        self.audit(execution, "execution.created")
+        execution_id = execution.execution_id
+        self.executor.submit(self._run, execution_id)
+        return execution.model_copy(deep=True)
+
+    def _run(self, execution_id: UUID) -> None:
+        execution = self.require(execution_id)
+        self._transition(execution, ExecutionStatus.RUNNING, "ingest_request")
+        self.emit(execution, "execution.started", status=execution.status)
+        try:
+            result = self.engine.start(
+                {
+                    "execution_id": str(execution.execution_id),
+                    "correlation_id": str(execution.correlation_id),
+                    "request": execution.request,
+                    "scenario": execution.scenario,
+                }
+            )
+            self._apply_graph_result(execution, result)
+        except Exception as exc:
+            execution.error = f"{type(exc).__name__}: {exc}"
+            self._transition(execution, ExecutionStatus.FAILED, execution.current_node)
+            self.emit(execution, "execution.failed", status=execution.status)
+            self.audit(execution, "workflow.failed", {"error_type": type(exc).__name__})
+
+    def shutdown(self) -> None:
+        self.executor.shutdown(wait=True, cancel_futures=False)
 
     def create(self, request: str, scenario: str = "SAFE") -> Execution:
         execution = Execution(request=request, scenario=scenario)
@@ -72,16 +228,27 @@ class ExecutionService:
         self._transition(execution, ExecutionStatus.RUNNING, "approval_interrupt")
         try:
             # Rebuild a missing process-local LangGraph checkpoint from durable input. The
-            # deterministic replay stops at the same interrupt and never repeats an approval.
+            # deterministic fake replay stops at the same interrupt. Observer suppression
+            # prevents duplicate persisted telemetry. Live-provider runs cannot be replayed
+            # truthfully and therefore fail closed after a process restart.
             if not self.engine.snapshot(str(execution_id)):
-                self.engine.start(
-                    {
-                        "execution_id": str(execution.execution_id),
-                        "correlation_id": str(execution.correlation_id),
-                        "request": execution.request,
-                        "scenario": execution.scenario,
-                    }
-                )
+                if self.engine.inference.__class__.__name__ != "DeterministicFakeInference":
+                    raise RuntimeError(
+                        "Process-local checkpoint unavailable; live inference replay denied"
+                    )
+                observer = self.engine.observer
+                self.engine.observer = lambda _event, _node, _state: None
+                try:
+                    self.engine.start(
+                        {
+                            "execution_id": str(execution.execution_id),
+                            "correlation_id": str(execution.correlation_id),
+                            "request": execution.request,
+                            "scenario": execution.scenario,
+                        }
+                    )
+                finally:
+                    self.engine.observer = observer
             result = self.engine.resume(
                 str(execution_id), decision.approved, decision.actor, decision.reason
             )
@@ -111,6 +278,19 @@ class ExecutionService:
             self.emit(
                 execution, "approval.requested", agent_id="approval-gate", status=execution.status
             )
+            self.emit(
+                execution,
+                "agent.message",
+                agent_id="approval-gate",
+                status=execution.status,
+                message_kind="escalation",
+                message=(
+                    "Decision paused. Human review is required before the graph may continue; "
+                    "inspect the evidence and record an accountable rationale."
+                ),
+                recipient="operator",
+                evidence_refs=["policy:human-accountability-v1"],
+            )
             self.audit(execution, "approval.requested", {"risk_level": execution.risk_level})
         else:
             execution.result = state.get("result")
@@ -130,8 +310,10 @@ class ExecutionService:
         execution = self.repository.get_execution(UUID(execution_id))
         if not execution:
             return
-        invocation = state.get("invocation", {})
-        route = state.get("route", {})
+        # Invocation and route belong exclusively to the node that invoked a model.
+        is_invocation = node == "risk-analysis" and event_type == "agent.completed"
+        invocation = state.get("invocation", {}) if is_invocation else {}
+        route = state.get("route", {}) if is_invocation else {}
         estimated_cost = None
         if invocation and event_type == "agent.completed" and node == "risk-analysis":
             estimated_cost = self.costs.calculate(
@@ -144,11 +326,36 @@ class ExecutionService:
             status="RUNNING" if event_type == "agent.started" else "COMPLETED",
             model_class=route.get("model_class"),
             provider=route.get("provider"),
+            model=route.get("model"),
+            placement=(
+                ("sovereign-local" if route.get("model_class") == "SOVEREIGN" else "eu-api")
+                if route
+                else None
+            ),
+            route_reason=route.get("reason"),
+            fallback_allowed=route.get("fallback_allowed"),
+            policy_outcome=(
+                ("FAIL_CLOSED" if route.get("model_class") == "SOVEREIGN" else "ALLOWED")
+                if route
+                else None
+            ),
             latency_ms=invocation.get("latency_ms"),
             prompt_tokens=invocation.get("prompt_tokens"),
             completion_tokens=invocation.get("completion_tokens"),
             estimated_cost_eur=estimated_cost,
         )
+        if event_type == "agent.completed" and node in self.AGENT_BRIEFINGS:
+            recipient, message, evidence_refs = self.AGENT_BRIEFINGS[node]
+            self.emit(
+                execution,
+                "agent.message",
+                agent_id=node,
+                status="COMPLETED",
+                message_kind="handoff",
+                message=message,
+                recipient=recipient,
+                evidence_refs=evidence_refs,
+            )
         if node == "risk-analysis" and event_type == "agent.completed" and route:
             self.emit(
                 execution,
@@ -156,12 +363,27 @@ class ExecutionService:
                 agent_id=node,
                 model_class=route.get("model_class"),
                 provider=route.get("provider"),
+                model=route.get("model"),
+                placement=(
+                    ("sovereign-local" if route.get("model_class") == "SOVEREIGN" else "eu-api")
+                    if route
+                    else None
+                ),
+                route_reason=route.get("reason"),
+                fallback_allowed=route.get("fallback_allowed"),
+                policy_outcome=(
+                    ("FAIL_CLOSED" if route.get("model_class") == "SOVEREIGN" else "ALLOWED")
+                    if route
+                    else None
+                ),
             )
             self.audit(
                 execution,
                 "routing.decision",
-                {"route": route.get("model_class"), "provider": route.get("provider")},
+                {"route": route},
             )
+        if self.demo_step_delay_ms and event_type == "agent.completed":
+            sleep(self.demo_step_delay_ms / 1000)
 
     def _transition(self, execution: Execution, target: ExecutionStatus, node: str) -> None:
         validate_transition(execution.status, target)

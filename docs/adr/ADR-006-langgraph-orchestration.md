@@ -13,4 +13,6 @@ Use a typed fixed LangGraph with native interrupt/resume.
 
 ## Consequences
 
-It makes transitions testable and HITL durable while preventing an LLM from inventing topology.
+It makes transitions and native HITL pause/resume testable while preventing an LLM from inventing
+topology. The current `InMemorySaver` is not restart durable; deterministic fake replay is a
+bounded recovery mechanism, not checkpoint persistence.
