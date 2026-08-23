@@ -2,7 +2,7 @@ SHELL := /bin/bash
 .PHONY: setup lint typecheck test test-integration build up down logs smoke security ci compose-config
 setup:
 	cd apps/api && python -m pip install -e '.[dev]'
-	cd apps/web && npm install
+	cd apps/web && npm ci
 lint:
 	cd apps/api && ruff check .
 	cd apps/web && npm run lint

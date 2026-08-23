@@ -67,19 +67,52 @@ class WorkflowEngine:
         builder = StateGraph(WorkflowState)
         builder.add_node("ingest_request", self._observed("ingest-request", self._ingest))
         builder.add_node(
+            "scope_architecture", self._observed("scope-architecture", self._scope_architecture)
+        )
+        builder.add_node(
             "classify_sensitivity", self._observed("sensitivity-classifier", self._classify)
         )
+        builder.add_node(
+            "threat_classification", self._observed("threat-classifier", self._threat_classify)
+        )
+        builder.add_node("cost_envelope", self._observed("cost-envelope", self._cost_envelope))
         builder.add_node("triage", self._observed("triage-agent", self._triage))
+        builder.add_node(
+            "architecture_assessment",
+            self._observed("architecture-assessment", self._architecture_assessment),
+        )
         builder.add_node("risk_analysis", self._observed("risk-analysis", self._analyse))
+        builder.add_node(
+            "compliance_assessment",
+            self._observed("compliance-assessment", self._compliance_assessment),
+        )
+        builder.add_node(
+            "finops_assessment", self._observed("finops-assessment", self._finops_assessment)
+        )
+        builder.add_node(
+            "resilience_assessment",
+            self._observed("resilience-assessment", self._resilience_assessment),
+        )
+        builder.add_node(
+            "challenge_analysis", self._observed("challenge-agent", self._challenge_analysis)
+        )
         builder.add_node("policy_evaluation", self._observed("policy-evaluator", self._policy))
         builder.add_node("approval_interrupt", self._approval)
         builder.add_node("finalise", self._observed("decision-finaliser", self._finalise))
         builder.add_node("reject", self._observed("decision-rejector", self._reject))
         builder.add_edge(START, "ingest_request")
-        builder.add_edge("ingest_request", "classify_sensitivity")
-        builder.add_edge("classify_sensitivity", "triage")
-        builder.add_edge("triage", "risk_analysis")
-        builder.add_edge("risk_analysis", "policy_evaluation")
+        builder.add_edge("ingest_request", "scope_architecture")
+        builder.add_edge("scope_architecture", "classify_sensitivity")
+        builder.add_edge("classify_sensitivity", "threat_classification")
+        builder.add_edge("threat_classification", "cost_envelope")
+        builder.add_edge("cost_envelope", "triage")
+        builder.add_edge("triage", "architecture_assessment")
+        builder.add_edge("architecture_assessment", "risk_analysis")
+        builder.add_edge("risk_analysis", "compliance_assessment")
+        builder.add_edge("compliance_assessment", "finops_assessment")
+        builder.add_edge("finops_assessment", "resilience_assessment")
+        builder.add_edge("resilience_assessment", "challenge_analysis")
+        builder.add_edge("challenge_analysis", "policy_evaluation")
         builder.add_conditional_edges(
             "policy_evaluation",
             self._approval_route,
@@ -97,6 +130,18 @@ class WorkflowEngine:
     @staticmethod
     def _ingest(state: WorkflowState) -> dict[str, Any]:
         return {"current_node": "ingest_request"}
+
+    @staticmethod
+    def _scope_architecture(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "scope_architecture"}
+
+    @staticmethod
+    def _threat_classify(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "threat_classification"}
+
+    @staticmethod
+    def _cost_envelope(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "cost_envelope"}
 
     @staticmethod
     def _classify(state: WorkflowState) -> dict[str, Any]:
@@ -119,6 +164,10 @@ class WorkflowEngine:
         )
         criticality = Criticality.HIGH if high else Criticality.LOW
         return {"current_node": "triage", "criticality": criticality.value}
+
+    @staticmethod
+    def _architecture_assessment(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "architecture_assessment"}
 
     def _analyse(self, state: WorkflowState) -> dict[str, Any]:
         context = RoutingContext(
@@ -146,6 +195,22 @@ class WorkflowEngine:
             "risk_level": (RiskLevel.HIGH if high else RiskLevel.LOW).value,
             "approval_required": high,
         }
+
+    @staticmethod
+    def _compliance_assessment(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "compliance_assessment"}
+
+    @staticmethod
+    def _finops_assessment(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "finops_assessment"}
+
+    @staticmethod
+    def _resilience_assessment(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "resilience_assessment"}
+
+    @staticmethod
+    def _challenge_analysis(state: WorkflowState) -> dict[str, Any]:
+        return {"current_node": "challenge_analysis"}
 
     @staticmethod
     def _approval(state: WorkflowState) -> dict[str, Any]:

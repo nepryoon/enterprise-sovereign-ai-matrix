@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from time import sleep
 from typing import Any
 from uuid import UUID
 
@@ -31,10 +33,47 @@ class ExecutionService:
         broker: EventBroker,
         engine: WorkflowEngine,
         traces: TraceAdapter,
+        demo_step_delay_ms: int = 0,
     ) -> None:
         self.repository, self.broker, self.engine, self.traces = repository, broker, engine, traces
         self.costs = CostCalculator()
+        self.demo_step_delay_ms = max(0, demo_step_delay_ms)
+        # Deliberately single-node and process-local. Persisted QUEUED work is not a
+        # distributed or restart-safe job queue.
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="matrix-workflow")
         engine.observer = self.observe_node
+
+    def create_queued(self, request: str, scenario: str = "SAFE") -> Execution:
+        execution = Execution(request=request, scenario=scenario)
+        execution.trace_id = self.traces.trace_id(str(execution.execution_id))
+        self.repository.save_execution(execution)
+        self.audit(execution, "execution.created")
+        execution_id = execution.execution_id
+        self.executor.submit(self._run, execution_id)
+        return execution.model_copy(deep=True)
+
+    def _run(self, execution_id: UUID) -> None:
+        execution = self.require(execution_id)
+        self._transition(execution, ExecutionStatus.RUNNING, "ingest_request")
+        self.emit(execution, "execution.started", status=execution.status)
+        try:
+            result = self.engine.start(
+                {
+                    "execution_id": str(execution.execution_id),
+                    "correlation_id": str(execution.correlation_id),
+                    "request": execution.request,
+                    "scenario": execution.scenario,
+                }
+            )
+            self._apply_graph_result(execution, result)
+        except Exception as exc:
+            execution.error = f"{type(exc).__name__}: {exc}"
+            self._transition(execution, ExecutionStatus.FAILED, execution.current_node)
+            self.emit(execution, "execution.failed", status=execution.status)
+            self.audit(execution, "workflow.failed", {"error_type": type(exc).__name__})
+
+    def shutdown(self) -> None:
+        self.executor.shutdown(wait=True, cancel_futures=False)
 
     def create(self, request: str, scenario: str = "SAFE") -> Execution:
         execution = Execution(request=request, scenario=scenario)
@@ -72,16 +111,27 @@ class ExecutionService:
         self._transition(execution, ExecutionStatus.RUNNING, "approval_interrupt")
         try:
             # Rebuild a missing process-local LangGraph checkpoint from durable input. The
-            # deterministic replay stops at the same interrupt and never repeats an approval.
+            # deterministic fake replay stops at the same interrupt. Observer suppression
+            # prevents duplicate persisted telemetry. Live-provider runs cannot be replayed
+            # truthfully and therefore fail closed after a process restart.
             if not self.engine.snapshot(str(execution_id)):
-                self.engine.start(
-                    {
-                        "execution_id": str(execution.execution_id),
-                        "correlation_id": str(execution.correlation_id),
-                        "request": execution.request,
-                        "scenario": execution.scenario,
-                    }
-                )
+                if self.engine.inference.__class__.__name__ != "DeterministicFakeInference":
+                    raise RuntimeError(
+                        "Process-local checkpoint unavailable; live inference replay denied"
+                    )
+                observer = self.engine.observer
+                self.engine.observer = lambda _event, _node, _state: None
+                try:
+                    self.engine.start(
+                        {
+                            "execution_id": str(execution.execution_id),
+                            "correlation_id": str(execution.correlation_id),
+                            "request": execution.request,
+                            "scenario": execution.scenario,
+                        }
+                    )
+                finally:
+                    self.engine.observer = observer
             result = self.engine.resume(
                 str(execution_id), decision.approved, decision.actor, decision.reason
             )
@@ -130,8 +180,10 @@ class ExecutionService:
         execution = self.repository.get_execution(UUID(execution_id))
         if not execution:
             return
-        invocation = state.get("invocation", {})
-        route = state.get("route", {})
+        # Invocation and route belong exclusively to the node that invoked a model.
+        is_invocation = node == "risk-analysis" and event_type == "agent.completed"
+        invocation = state.get("invocation", {}) if is_invocation else {}
+        route = state.get("route", {}) if is_invocation else {}
         estimated_cost = None
         if invocation and event_type == "agent.completed" and node == "risk-analysis":
             estimated_cost = self.costs.calculate(
@@ -144,6 +196,19 @@ class ExecutionService:
             status="RUNNING" if event_type == "agent.started" else "COMPLETED",
             model_class=route.get("model_class"),
             provider=route.get("provider"),
+            model=route.get("model"),
+            placement=(
+                ("sovereign-local" if route.get("model_class") == "SOVEREIGN" else "eu-api")
+                if route
+                else None
+            ),
+            route_reason=route.get("reason"),
+            fallback_allowed=route.get("fallback_allowed"),
+            policy_outcome=(
+                ("FAIL_CLOSED" if route.get("model_class") == "SOVEREIGN" else "ALLOWED")
+                if route
+                else None
+            ),
             latency_ms=invocation.get("latency_ms"),
             prompt_tokens=invocation.get("prompt_tokens"),
             completion_tokens=invocation.get("completion_tokens"),
@@ -156,12 +221,27 @@ class ExecutionService:
                 agent_id=node,
                 model_class=route.get("model_class"),
                 provider=route.get("provider"),
+                model=route.get("model"),
+                placement=(
+                    ("sovereign-local" if route.get("model_class") == "SOVEREIGN" else "eu-api")
+                    if route
+                    else None
+                ),
+                route_reason=route.get("reason"),
+                fallback_allowed=route.get("fallback_allowed"),
+                policy_outcome=(
+                    ("FAIL_CLOSED" if route.get("model_class") == "SOVEREIGN" else "ALLOWED")
+                    if route
+                    else None
+                ),
             )
             self.audit(
                 execution,
                 "routing.decision",
-                {"route": route.get("model_class"), "provider": route.get("provider")},
+                {"route": route},
             )
+        if self.demo_step_delay_ms and event_type == "agent.completed":
+            sleep(self.demo_step_delay_ms / 1000)
 
     def _transition(self, execution: Execution, target: ExecutionStatus, node: str) -> None:
         validate_transition(execution.status, target)

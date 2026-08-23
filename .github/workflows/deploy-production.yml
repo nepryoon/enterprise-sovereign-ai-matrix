@@ -55,7 +55,7 @@ jobs:
           node-version-file: apps/web/.nvmrc
 
       - name: Install frontend
-        run: cd apps/web && npm install --no-audit --no-fund
+        run: cd apps/web && npm ci --no-audit --no-fund
 
       - name: Frontend lint
         run: cd apps/web && npm run lint

@@ -1,6 +1,9 @@
 # Enterprise Sovereign AI Decision Matrix
 
-A production-shaped proof of concept for governed enterprise AI execution. It combines a deterministic LangGraph workflow, policy-controlled multi-model routing, durable Human-in-the-Loop (HITL) checkpoints, append-only audit telemetry, and a real-time Mission Control dashboard. It is an operations console—not a chatbot.
+An enterprise AI orchestration control plane with a fully functioning reference workflow,
+deterministic showcase mode, sovereign routing, Human-in-the-Loop governance, and auditable
+decision lineage. It is an operations console—not a chatbot or a general-purpose enterprise
+platform.
 
 ## Why this matters
 
@@ -8,12 +11,16 @@ Enterprises need to know **which model handled data, why it was selected, what i
 
 ## Capabilities
 
-- Deterministic Enterprise Change Risk Assessment state machine with typed state and explicit transitions.
+- Synthetic **EU Critical Infrastructure Change Assessment** with typed state, explicit transitions,
+  deterministic domain assessments, challenge analysis, and one real routed model invocation.
 - Real LangGraph interruption and `Command(resume=...)` continuation for approval and rejection.
 - Sovereignty-aware `FAST`, `BALANCED`, `REASONING`, and `SOVEREIGN` routing; sensitive traffic fails closed.
-- FastAPI REST control plane, replayable SSE telemetry with heartbeats, correlation IDs, and immutable audit events.
+- FastAPI REST control plane with immediate queued creation, process-local background execution,
+  monotonic replayable SSE telemetry, heartbeats, correlation IDs, and immutable audit events.
 - PostgreSQL production persistence and deterministic fake inference for zero-cost tests.
-- Next.js Mission Control with live Agent Matrix, execution timeline, model routing, token/cost/latency KPIs, trace links, and an accessible approval interceptor.
+- Next.js operational shell with a phase-by-discipline Decision Matrix, deep-linked Runs, Run
+  Detail, Governance, Observability/Audit, Architecture Proof, inspector, event lineage, and an
+  accessible approval interceptor.
 - LiteLLM gateway, compact Ollama inference, and failure-isolated Langfuse instrumentation.
 - Hardened, non-root first-party containers, private infrastructure services, GitHub CI, and Cloudflare Tunnel deployment.
 
@@ -24,7 +31,8 @@ flowchart LR
   U[Enterprise operator] --> W[Next.js Mission Control]
   W -->|REST + SSE| A[FastAPI control plane]
   A --> G[LangGraph state machine]
-  G --> P[(PostgreSQL checkpoints/audit)]
+  G --> P[(PostgreSQL application state / events / audit)]
+  G --> M[(Process-local graph checkpoint)]
   G --> R[Routing policy]
   R --> L[LiteLLM proxy]
   L --> C[Cloud model classes]
@@ -32,7 +40,13 @@ flowchart LR
   G -. redacted traces .-> F[Langfuse]
 ```
 
-The workflow is fixed: `ingest_request → classify_sensitivity → triage → risk_analysis → policy_evaluation → approval_interrupt? → finalise/reject`. LLM output supplies analysis, never arbitrary topology. See [architecture](docs/architecture/ARCHITECTURE.md), [domain model](docs/architecture/DOMAIN_MODEL.md), and [state machine](docs/architecture/STATE_MACHINE.md).
+The workflow is a fixed sequential topology: intake and system scoping; sensitivity, threat and
+budget classification; triage; architecture, routed risk, compliance, FinOps and resilience
+assessment; challenge; policy; optional approval interrupt; and finalise/reject. LLM output
+supplies analysis, never arbitrary topology. The sequential topology is intentional and no
+fan-out/concurrency claim is made. See [architecture](docs/architecture/ARCHITECTURE.md),
+[domain model](docs/architecture/DOMAIN_MODEL.md), and
+[state machine](docs/architecture/STATE_MACHINE.md).
 
 ## Quick start
 
@@ -60,9 +74,14 @@ docker compose exec ollama ollama pull qwen2.5:1.5b-instruct-q4_K_M
 
 No commercial key is required for deterministic demonstration mode or the test suites. Cloud routes are opt-in through environment variables; `RUN_LIVE_LLM_TESTS=false` is the default.
 
-## Demo workflow
+## Two-minute guided demonstration
 
-Mission Control offers deterministic scenarios for a low-risk public change, a public high-risk change, restricted data, and unavailable sovereign inference. To exercise governance from a terminal:
+Open the Command Centre, launch the prefilled high-risk synthetic EU change, inspect the real route
+and event-backed task cards, decide at the backend HITL gate, then follow the execution deep link
+and Architecture Proof. The exact narrative is in the
+[recruiter demo script](docs/showcase/RECRUITER_DEMO_SCRIPT.md). Mission Control also offers SAFE,
+SENSITIVE, PROVIDER_FAILURE, TIMEOUT, and MALFORMED_RESPONSE deterministic scenarios. To exercise
+governance from a terminal:
 
 ```bash
 ./scripts/demo-smoke-test.sh http://localhost:8000
@@ -109,11 +128,21 @@ Secrets are environment-only; mutations are rate-limited; CORS and security head
 
 The project hard cap is **EUR 250**. Open-source software, deterministic CI, a compact local model, and a small European VPS keep the expected showcase cost below that limit. See the [budget ledger](docs/finops/BUDGET.md) and [cost model](docs/finops/COST_MODEL.md).
 
-## Showcase assets and limitations
+## Showcase evidence and limitations
 
-The runnable dashboard itself is the canonical demo. Capture wide and mobile screenshots after deployment as described in the operations guide; generated screenshots are intentionally not committed as stale evidence.
+The runnable dashboard is the canonical demo. Deterministic evidence belongs in
+`docs/showcase/screenshots/`; the current environment had no browser binary and external access
+was blocked, so this branch does not misrepresent an unrendered image as a validated screenshot.
+See the [visual QA report](docs/design/VISUAL_QA_REPORT.md) and
+[requirements traceability](docs/design/REQUIREMENTS_TRACEABILITY.md).
 
-Current limitations are deliberately explicit: CPU-only sovereign inference has higher latency; production authentication is delegated to Cloudflare Access; commercial provider behaviour requires opt-in credentials; and the full observability stack has a larger memory footprint than the application-only profile. See [release readiness](docs/RELEASE_READINESS.md).
+Current limitations are deliberately explicit: the executor is process-local rather than a
+distributed/restart-safe queue; LangGraph uses `InMemorySaver`; only fake inference can be
+deterministically replayed to an interrupted state after restart and live-provider replay fails
+closed; CPU-only sovereign inference has higher latency; production authentication is delegated
+to Cloudflare Access; commercial provider behaviour requires opt-in credentials; and the full
+observability stack has a larger memory footprint than the application-only profile. See
+[release readiness](docs/RELEASE_READINESS.md).
 
 ## Roadmap
 
