@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { ApprovalModal } from "@/components/approval-modal";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { DecisionMatrix, TaskInspector } from "@/components/features/decision-matrix";
+import { DecisionTheatre } from "@/components/features/decision-theatre";
 import type { Task } from "@/components/features/reference-data";
 import { useExecutionStream } from "@/hooks/use-execution-stream";
 import { createExecution, decide, getExecution } from "@/lib/api";
@@ -185,32 +186,35 @@ export function MissionControl() {
             }
           />
           {state.error ? <div role="alert" className="error-banner">{state.error}</div> : null}
+          <div className="theatre-stack" id="decision-theatre">
+            <DecisionTheatre events={state.events} />
+            <section className="event-shelf panel">
+              <div>
+                <span className="eyebrow">Versioned event contract</span>
+                <h2>Execution lineage</h2>
+              </div>
+              <ol>
+                {state.events.length ? (
+                  [...state.events].reverse().slice(0, 7).map((event) => (
+                    <li key={event.event_id}>
+                      <span />
+                      <code>{event.event_type}</code>
+                      <small>{event.agent_id ?? "orchestrator"}</small>
+                      <time>{new Date(event.timestamp).toLocaleTimeString()}</time>
+                    </li>
+                  ))
+                ) : (
+                  <li className="empty-event">
+                    Launch the deterministic showcase to inspect live transitions.
+                  </li>
+                )}
+              </ol>
+            </section>
+          </div>
           <div className="matrix-inspector">
             <DecisionMatrix agents={agents} selected={selected?.id} onSelect={setSelected} />
             <TaskInspector task={selected} agents={agents} onClose={() => setSelected(null)} />
           </div>
-          <section className="event-shelf panel">
-            <div>
-              <span className="eyebrow">Versioned event contract</span>
-              <h2>Execution lineage</h2>
-            </div>
-            <ol>
-              {state.events.length ? (
-                [...state.events].reverse().slice(0, 7).map((event) => (
-                  <li key={event.event_id}>
-                    <span />
-                    <code>{event.event_type}</code>
-                    <small>{event.agent_id ?? "orchestrator"}</small>
-                    <time>{new Date(event.timestamp).toLocaleTimeString()}</time>
-                  </li>
-                ))
-              ) : (
-                <li className="empty-event">
-                  Launch the deterministic showcase to inspect live transitions.
-                </li>
-              )}
-            </ol>
-          </section>
         </div>
       </div>
       {state.execution?.status === "WAITING_APPROVAL" && approvalOpen ? (

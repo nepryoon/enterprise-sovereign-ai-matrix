@@ -329,13 +329,15 @@ Atteso: HTTPS 200, health `{"status":"ok"}`/`ready`, HTTP redirect HTTPS, header
 Lo script reale accetta la **base API senza `/api/v1`**:
 
 ```bash
-./scripts/demo-smoke-test.sh https://matrix.neuromorphicinference.com
+CF_ACCESS_CLIENT_ID='<service-token-id>' \
+CF_ACCESS_CLIENT_SECRET='<service-token-secret>' \
+  ./scripts/demo-smoke-test.sh https://matrix.neuromorphicinference.com
 # test privato diretto senza pubblicare API:
 $DC exec -T api sh -c 'command -v curl >/dev/null' # l'immagine API normalmente non include curl
 curl --fail http://127.0.0.1:8000/api/v1/health/live # solo se override temporaneo loopback autorizzato
 ```
 
-Lo script crea HIGH_RISK, attende `WAITING_APPROVAL`, approva e attende `COMPLETED`. **Non verifica da solo reject, audit dettagliato o SSE**, contrariamente a una descrizione più ampia: verificarli manualmente §22. L'opzione raccomandata è URL pubblico protetto Access/service token appropriato oppure esecuzione dal VPS attraverso hostname; non esporre FastAPI. Un override temporaneo deve bindare esclusivamente `127.0.0.1:8000:8000` e poi essere rimosso.
+Lo script crea HIGH_RISK, attende `WAITING_APPROVAL`, approva e attende `COMPLETED`. **Non verifica da solo reject, audit dettagliato o SSE**, contrariamente a una descrizione più ampia: verificarli manualmente §22. Quando Access è abilitato, configura obbligatoriamente un service token con scope minimo nei secret GitHub `CF_ACCESS_CLIENT_ID` e `CF_ACCESS_CLIENT_SECRET`; lo script invia entrambi gli header Cloudflare a ogni richiesta. Durante una migrazione in cui l'hostname non è ancora protetto, i secret possono essere assenti e lo stesso gate verifica l'endpoint pubblico senza header. In alternativa, eseguilo dal VPS attraverso un percorso autenticato; non esporre FastAPI. Un override temporaneo deve bindare esclusivamente `127.0.0.1:8000:8000` e poi essere rimosso.
 
 ## 22. Test manuale Mission Control
 
