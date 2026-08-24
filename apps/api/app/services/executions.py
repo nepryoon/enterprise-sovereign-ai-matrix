@@ -27,6 +27,123 @@ from app.telemetry.broker import EventBroker
 
 
 class ExecutionService:
+    AGENT_BRIEFINGS: dict[str, tuple[str, str, list[str]]] = {
+        "ingest-request": (
+            "scope-architecture",
+            (
+                "Request normalised. Establish the affected system boundary "
+                "before collecting assessments."
+            ),
+            ["request:synthetic-change"],
+        ),
+        "scope-architecture": (
+            "sensitivity-classifier",
+            (
+                "System boundary mapped. Validate whether the described control-plane data "
+                "has residency constraints."
+            ),
+            ["scope:affected-services"],
+        ),
+        "sensitivity-classifier": (
+            "threat-classifier",
+            (
+                "Sensitivity classification recorded. Threat analysis must respect "
+                "the selected residency policy."
+            ),
+            ["policy:data-residency-v1"],
+        ),
+        "threat-classifier": (
+            "triage-agent",
+            (
+                "Threat surface reviewed. Privileged access and rollback exposure "
+                "require operational triage."
+            ),
+            ["assessment:threat-surface"],
+        ),
+        "cost-envelope": (
+            "finops-assessment",
+            (
+                "Cost envelope opened. Reconcile only persisted invocation telemetry "
+                "against this boundary."
+            ),
+            ["budget:showcase-envelope"],
+        ),
+        "triage-agent": (
+            "architecture-assessment",
+            "Criticality triaged. Assess coupling, blast radius and rollback isolation next.",
+            ["assessment:criticality"],
+        ),
+        "architecture-assessment": (
+            "risk-analysis",
+            (
+                "Architecture review complete. Route the risk synthesis under "
+                "the classified policy constraints."
+            ),
+            ["assessment:architecture"],
+        ),
+        "risk-analysis": (
+            "compliance-assessment",
+            (
+                "Model-backed risk synthesis complete. Validate its recommendation "
+                "against accountability controls."
+            ),
+            ["inference:risk-analysis"],
+        ),
+        "compliance-assessment": (
+            "finops-assessment",
+            (
+                "Control obligations mapped. Cost optimisation must not weaken "
+                "residency or approval controls."
+            ),
+            ["assessment:compliance"],
+        ),
+        "finops-assessment": (
+            "resilience-assessment",
+            (
+                "Invocation cost reconciled. Confirm operational resilience before "
+                "challenging the combined case."
+            ),
+            ["telemetry:invocation-cost"],
+        ),
+        "resilience-assessment": (
+            "challenge-agent",
+            (
+                "Recovery and rollback posture assessed. Challenge the unresolved "
+                "security, cost and continuity trade-off."
+            ),
+            ["assessment:resilience"],
+        ),
+        "challenge-agent": (
+            "policy-evaluator",
+            (
+                "Material trade-off identified: speed of change conflicts with rollback assurance. "
+                "Apply policy before decision."
+            ),
+            ["challenge:material-trade-off"],
+        ),
+        "policy-evaluator": (
+            "approval-gate",
+            (
+                "Policy evaluation complete. Escalate high-risk outcomes "
+                "to an accountable human operator."
+            ),
+            ["policy:human-accountability-v1"],
+        ),
+        "decision-finaliser": (
+            "operator",
+            "Decision record finalised with routing, evidence, cost and operator lineage.",
+            ["decision:final-record"],
+        ),
+        "decision-rejector": (
+            "operator",
+            (
+                "Decision rejected. Execution cancelled and the operator rationale "
+                "retained in audit lineage."
+            ),
+            ["decision:rejection-record"],
+        ),
+    }
+
     def __init__(
         self,
         repository: Repository,
@@ -161,6 +278,19 @@ class ExecutionService:
             self.emit(
                 execution, "approval.requested", agent_id="approval-gate", status=execution.status
             )
+            self.emit(
+                execution,
+                "agent.message",
+                agent_id="approval-gate",
+                status=execution.status,
+                message_kind="escalation",
+                message=(
+                    "Decision paused. Human review is required before the graph may continue; "
+                    "inspect the evidence and record an accountable rationale."
+                ),
+                recipient="operator",
+                evidence_refs=["policy:human-accountability-v1"],
+            )
             self.audit(execution, "approval.requested", {"risk_level": execution.risk_level})
         else:
             execution.result = state.get("result")
@@ -214,6 +344,18 @@ class ExecutionService:
             completion_tokens=invocation.get("completion_tokens"),
             estimated_cost_eur=estimated_cost,
         )
+        if event_type == "agent.completed" and node in self.AGENT_BRIEFINGS:
+            recipient, message, evidence_refs = self.AGENT_BRIEFINGS[node]
+            self.emit(
+                execution,
+                "agent.message",
+                agent_id=node,
+                status="COMPLETED",
+                message_kind="handoff",
+                message=message,
+                recipient=recipient,
+                evidence_refs=evidence_refs,
+            )
         if node == "risk-analysis" and event_type == "agent.completed" and route:
             self.emit(
                 execution,

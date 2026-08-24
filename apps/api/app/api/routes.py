@@ -9,7 +9,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.schemas import CreateExecutionRequest, DecisionRequest
-from app.domain import ApprovalConflictError, ApprovalDecision
+from app.domain import ApprovalConflictError, ApprovalDecision, TelemetryEvent
 
 router = APIRouter(prefix="/api/v1")
 
@@ -81,7 +81,7 @@ def routing(execution_id: UUID, request: Request):
 @router.get("/observability/metrics")
 def metrics(request: Request):
     executions, _ = request.app.state.container.repository.list_executions(limit=1000)
-    invocations = []
+    invocations: list[TelemetryEvent] = []
     for execution in executions:
         invocations.extend(
             event
