@@ -1,3 +1,8 @@
+import pytest
+
+pytestmark = pytest.mark.integration
+
+
 def create(client, scenario="SAFE", text="Assess a routine public documentation change"):
     return client.post("/api/v1/executions?wait=true", json={"request": text, "scenario": scenario})
 
@@ -37,12 +42,24 @@ def test_fastapi_to_langgraph_low_risk(client):
     detail = client.get(f"/api/v1/executions/{body['execution_id']}").json()
     assert detail["result"] == "APPROVED"
     assert any(event["event_type"] == "workflow.completed" for event in detail["audit"])
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    messages = [event for event in events if event["event_type"] == "agent.message"]
+    policy_handoff = next(event for event in messages if event["agent_id"] == "policy-evaluator")
+    assert policy_handoff["recipient"] == "decision-finaliser"
+    assert all(event["recipient"] != "approval-gate" for event in messages)
 
 
 def test_high_risk_interrupt_api_approval_resume(client):
     response = create(client, "HIGH_RISK", "Assess whether a production deployment should proceed")
     body = response.json()
     assert body["status"] == "WAITING_APPROVAL"
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    policy_handoff = next(
+        event
+        for event in events
+        if event["event_type"] == "agent.message" and event["agent_id"] == "policy-evaluator"
+    )
+    assert policy_handoff["recipient"] == "approval-gate"
     approved = client.post(
         f"/api/v1/executions/{body['execution_id']}/approve",
         json={"actor": "operator", "reason": "Canary controls verified"},
@@ -129,6 +146,16 @@ def test_only_invoking_agent_has_model_and_cost_telemetry(client):
     assert metrics["invocation_count"] == 1
     assert metrics["prompt_tokens"] == metered[0]["prompt_tokens"]
     assert metrics["estimated_cost_eur"] == metered[0]["estimated_cost_eur"]
+
+
+def test_decision_theatre_messages_are_persisted_agent_handoffs(client):
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    messages = [event for event in events if event["event_type"] == "agent.message"]
+    assert len(messages) >= 10
+    assert all(event["message"] and event["recipient"] for event in messages)
+    assert all(event["message_kind"] in {"handoff", "escalation"} for event in messages)
+    assert any("trade-off" in event["message"] for event in messages)
 
 
 def test_checkpoint_resume_after_application_restart(tmp_path):

@@ -21,6 +21,8 @@ Enterprises need to know **which model handled data, why it was selected, what i
 - Next.js operational shell with a phase-by-discipline Decision Matrix, deep-linked Runs, Run
   Detail, Governance, Observability/Audit, Architecture Proof, inspector, event lineage, and an
   accessible approval interceptor.
+- A Decision Theatre conversation feed: each visible agent-to-agent handoff is emitted and
+  persisted by the backend event contract, carries evidence references, and is labelled synthetic.
 - LiteLLM gateway, compact Ollama inference, and failure-isolated Langfuse instrumentation.
 - Hardened, non-root first-party containers, private infrastructure services, GitHub CI, and Cloudflare Tunnel deployment.
 
@@ -88,6 +90,16 @@ governance from a terminal:
 ```
 
 The script creates a high-risk execution, confirms it reaches `WAITING_APPROVAL`, approves it, and verifies completion. In the UI the same path opens an approval interceptor showing risk, evidence, recommendation, and operator-reason controls. Rejection follows a distinct audited abort path.
+
+### Decision Theatre and OSINT boundary
+
+The Command Centre is an **OSINT-style decision theatre**, not an internet-collection platform.
+As real graph nodes complete, the backend persists concise handoffs between specialist roles; the
+conversation window streams those exact events and their evidence references. It never invents
+chat messages in the browser. The current showcase analyses synthetic supplied context and does
+not yet crawl the web, query paid data sources, resolve real entities, or claim access to
+confidential intelligence. Those collection connectors require separately governed provenance,
+licensing, robots/terms, retention and source-reliability controls.
 
 ## Sovereign routing and observability
 

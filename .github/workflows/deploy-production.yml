@@ -100,7 +100,7 @@ jobs:
             build api web
 
   deploy:
-    name: Deploy production
+    name: Start production deploy
     needs: validate
 
     runs-on:
@@ -118,3 +118,28 @@ jobs:
         run: |
           sudo -n /usr/local/sbin/deploy-sovereign-matrix \
             "${{ github.sha }}"
+
+  smoke-production:
+    name: Smoke-test production
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout smoke test
+        uses: actions/checkout@v4
+
+      - name: Wait for rollout and verify public application workflow
+        run: |
+          # The deployment can temporarily restart the only self-hosted runner,
+          # so verification must not require that runner to come back online.
+          sleep 90
+          for attempt in {1..48}; do
+            if ./scripts/demo-smoke-test.sh https://matrix.neuromorphicinference.com; then
+              exit 0
+            fi
+            echo "Public smoke test not ready ($attempt/48); retrying in 30 seconds"
+            sleep 30
+          done
+          echo "Production did not pass the public smoke test within 25 minutes" >&2
+          exit 1

@@ -109,14 +109,12 @@ class Repository:
 
     def add_event(self, event: TelemetryEvent) -> None:
         with self._lock, Session(self.engine) as session:
-            sequence = (
-                session.scalar(
-                    select(func.coalesce(func.max(EventRow.sequence), 0)).where(
-                        EventRow.execution_id == str(event.execution_id)
-                    )
+            previous_sequence = session.scalar(
+                select(func.coalesce(func.max(EventRow.sequence), 0)).where(
+                    EventRow.execution_id == str(event.execution_id)
                 )
-                + 1
             )
+            sequence = (previous_sequence or 0) + 1
             event.sequence = sequence
             session.add(
                 EventRow(
