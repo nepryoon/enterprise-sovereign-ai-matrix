@@ -134,10 +134,6 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          [[ -n "$CF_ACCESS_CLIENT_ID" && -n "$CF_ACCESS_CLIENT_SECRET" ]] || {
-            echo "Cloudflare Access service-token secrets are not configured" >&2
-            exit 1
-          }
           # The deployment can temporarily restart the only self-hosted runner,
           # so verification must not require that runner to come back online.
           sleep 90

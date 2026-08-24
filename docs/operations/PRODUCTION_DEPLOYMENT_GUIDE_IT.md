@@ -337,7 +337,7 @@ $DC exec -T api sh -c 'command -v curl >/dev/null' # l'immagine API normalmente 
 curl --fail http://127.0.0.1:8000/api/v1/health/live # solo se override temporaneo loopback autorizzato
 ```
 
-Lo script crea HIGH_RISK, attende `WAITING_APPROVAL`, approva e attende `COMPLETED`. **Non verifica da solo reject, audit dettagliato o SSE**, contrariamente a una descrizione più ampia: verificarli manualmente §22. Per l'URL pubblico protetto, configura un service token Access con scope minimo nei secret GitHub `CF_ACCESS_CLIENT_ID` e `CF_ACCESS_CLIENT_SECRET`; lo script invia entrambi gli header Cloudflare a ogni richiesta. In alternativa, eseguilo dal VPS attraverso un percorso autenticato; non esporre FastAPI. Un override temporaneo deve bindare esclusivamente `127.0.0.1:8000:8000` e poi essere rimosso.
+Lo script crea HIGH_RISK, attende `WAITING_APPROVAL`, approva e attende `COMPLETED`. **Non verifica da solo reject, audit dettagliato o SSE**, contrariamente a una descrizione più ampia: verificarli manualmente §22. Quando Access è abilitato, configura obbligatoriamente un service token con scope minimo nei secret GitHub `CF_ACCESS_CLIENT_ID` e `CF_ACCESS_CLIENT_SECRET`; lo script invia entrambi gli header Cloudflare a ogni richiesta. Durante una migrazione in cui l'hostname non è ancora protetto, i secret possono essere assenti e lo stesso gate verifica l'endpoint pubblico senza header. In alternativa, eseguilo dal VPS attraverso un percorso autenticato; non esporre FastAPI. Un override temporaneo deve bindare esclusivamente `127.0.0.1:8000:8000` e poi essere rimosso.
 
 ## 22. Test manuale Mission Control
 

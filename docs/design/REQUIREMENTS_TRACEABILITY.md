@@ -6,7 +6,8 @@ complete.
 
 The production workflow propagates the privileged deployment process exit status from the
 self-hosted runner, then uses a GitHub-hosted job to retry the public application smoke test during
-the rollout with a least-scope Cloudflare Access service token supplied through GitHub secrets. The
+the rollout. Cloudflare Access credentials are supplied through GitHub secrets when the hostname is
+protected and omitted while the current public migration endpoint remains unprotected. The
 production runner must remain online for the deploy command; runner recovery is an operator
 responsibility and is not represented as application-level deployment resilience.
 
