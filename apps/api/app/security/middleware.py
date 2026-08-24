@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -21,7 +22,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: object, limit: int = 60) -> None:
+    def __init__(self, app: ASGIApp, limit: int = 60) -> None:
         super().__init__(app)
         self.limit = limit
         self.requests: dict[str, deque[float]] = defaultdict(deque)

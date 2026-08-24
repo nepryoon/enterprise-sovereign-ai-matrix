@@ -26,11 +26,8 @@ class TraceAdapter:
                 with self.client.start_as_current_observation(
                     as_type="span",
                     name=name,
-                    metadata=safe,
+                    metadata={**safe, "execution_id": execution_id},
                 ):
-                    self.client.update_current_trace(
-                        session_id=execution_id,
-                        metadata={"execution_id": execution_id},
-                    )
+                    pass
         except Exception as exc:
             logger.warning("Observability export degraded: %s", type(exc).__name__)

@@ -23,6 +23,7 @@ dev = ["pytest==8.4.1", "pytest-cov==6.2.1", "ruff==0.12.10", "mypy==1.17.1"]
 packages = ["app"]
 [tool.pytest.ini_options]
 addopts = "-q --cov=app --cov-report=term-missing --cov-fail-under=80"
+markers = ["integration: end-to-end API tests that exercise the application stack"]
 testpaths = ["tests"]
 [tool.ruff]
 line-length = 100

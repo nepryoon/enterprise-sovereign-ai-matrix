@@ -1,3 +1,8 @@
+import pytest
+
+pytestmark = pytest.mark.integration
+
+
 def create(client, scenario="SAFE", text="Assess a routine public documentation change"):
     return client.post("/api/v1/executions?wait=true", json={"request": text, "scenario": scenario})
 
@@ -129,6 +134,16 @@ def test_only_invoking_agent_has_model_and_cost_telemetry(client):
     assert metrics["invocation_count"] == 1
     assert metrics["prompt_tokens"] == metered[0]["prompt_tokens"]
     assert metrics["estimated_cost_eur"] == metered[0]["estimated_cost_eur"]
+
+
+def test_decision_theatre_messages_are_persisted_agent_handoffs(client):
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    messages = [event for event in events if event["event_type"] == "agent.message"]
+    assert len(messages) >= 10
+    assert all(event["message"] and event["recipient"] for event in messages)
+    assert all(event["message_kind"] in {"handoff", "escalation"} for event in messages)
+    assert any("trade-off" in event["message"] for event in messages)
 
 
 def test_checkpoint_resume_after_application_restart(tmp_path):
