@@ -114,76 +114,32 @@ jobs:
       url: https://matrix.neuromorphicinference.com
 
     steps:
-      - name: Start exact-commit deploy outside the runner lifecycle
-        env:
-          DEPLOY_SHA: ${{ github.sha }}
+      - name: Deploy exact commit
         run: |
-          status_file="/tmp/sovereign-matrix-deploy-${DEPLOY_SHA}.status"
-          log_file="/tmp/sovereign-matrix-deploy-${DEPLOY_SHA}.log"
-          rm -f "$status_file" "$log_file"
-
-          # Deploying the stack can restart the self-hosted runner. Detach the
-          # deploy process from Actions process tracking so that it can finish.
-          RUNNER_TRACKING_ID="" nohup setsid bash -c '
-            sudo -n /usr/local/sbin/deploy-sovereign-matrix "$1"
-            result=$?
-            printf "%s\n" "$result" >"$2"
-            exit "$result"
-          ' -- "$DEPLOY_SHA" "$status_file" >"$log_file" 2>&1 </dev/null &
-
-          deploy_pid=$!
-          sleep 5
-          if ! kill -0 "$deploy_pid" 2>/dev/null && [[ ! -f "$status_file" ]]; then
-            echo "Deploy process exited before recording a result" >&2
-            cat "$log_file" >&2
-            exit 1
-          fi
-
-  verify-deploy:
-    name: Verify production deploy result
-    needs: deploy
-    timeout-minutes: 30
-
-    runs-on:
-      - self-hosted
-      - Linux
-      - X64
-      - matrix-prod
-
-    steps:
-      - name: Wait for detached deploy result
-        env:
-          DEPLOY_SHA: ${{ github.sha }}
-        run: |
-          status_file="/tmp/sovereign-matrix-deploy-${DEPLOY_SHA}.status"
-          log_file="/tmp/sovereign-matrix-deploy-${DEPLOY_SHA}.log"
-
-          for attempt in {1..150}; do
-            if [[ -f "$status_file" ]]; then
-              cat "$log_file"
-              result="$(cat "$status_file")"
-              [[ "$result" =~ ^[0-9]+$ ]] || {
-                echo "Invalid deploy result: $result" >&2
-                exit 1
-              }
-              exit "$result"
-            fi
-            echo "Waiting for deploy result ($attempt/150)"
-            sleep 10
-          done
-
-          echo "Deploy did not record a result within 25 minutes" >&2
-          [[ ! -f "$log_file" ]] || cat "$log_file" >&2
-          exit 1
+          sudo -n /usr/local/sbin/deploy-sovereign-matrix \
+            "${{ github.sha }}"
 
   smoke-production:
     name: Smoke-test production
-    needs: verify-deploy
+    needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout smoke test
         uses: actions/checkout@v4
 
-      - name: Verify public application workflow
-        run: ./scripts/demo-smoke-test.sh https://matrix.neuromorphicinference.com
+      - name: Wait for rollout and verify public application workflow
+        run: |
+          # The deployment can temporarily restart the only self-hosted runner,
+          # so verification must not require that runner to come back online.
+          sleep 90
+          for attempt in {1..48}; do
+            if ./scripts/demo-smoke-test.sh https://matrix.neuromorphicinference.com; then
+              exit 0
+            fi
+            echo "Public smoke test not ready ($attempt/48); retrying in 30 seconds"
+            sleep 30
+          done
+          echo "Production did not pass the public smoke test within 25 minutes" >&2
+          exit 1

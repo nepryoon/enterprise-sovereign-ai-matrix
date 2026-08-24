@@ -42,12 +42,24 @@ def test_fastapi_to_langgraph_low_risk(client):
     detail = client.get(f"/api/v1/executions/{body['execution_id']}").json()
     assert detail["result"] == "APPROVED"
     assert any(event["event_type"] == "workflow.completed" for event in detail["audit"])
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    messages = [event for event in events if event["event_type"] == "agent.message"]
+    policy_handoff = next(event for event in messages if event["agent_id"] == "policy-evaluator")
+    assert policy_handoff["recipient"] == "decision-finaliser"
+    assert all(event["recipient"] != "approval-gate" for event in messages)
 
 
 def test_high_risk_interrupt_api_approval_resume(client):
     response = create(client, "HIGH_RISK", "Assess whether a production deployment should proceed")
     body = response.json()
     assert body["status"] == "WAITING_APPROVAL"
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    policy_handoff = next(
+        event
+        for event in events
+        if event["event_type"] == "agent.message" and event["agent_id"] == "policy-evaluator"
+    )
+    assert policy_handoff["recipient"] == "approval-gate"
     approved = client.post(
         f"/api/v1/executions/{body['execution_id']}/approve",
         json={"actor": "operator", "reason": "Canary controls verified"},
