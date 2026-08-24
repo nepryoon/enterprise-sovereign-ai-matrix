@@ -4,11 +4,10 @@ Evidence date: 2026-08-24. `Implemented` means repository evidence exists; `Veri
 means the named check ran successfully in this environment. Blocked items are not represented as
 complete.
 
-The production workflow detaches the privileged deployment from the self-hosted Actions runner,
-then uses a GitHub-hosted job to retry the public application smoke test during the rollout. This
-prevents an intentional runner restart from cancelling the deploy or leaving verification queued
-indefinitely waiting for that same runner. The workflow verifies public application behaviour; the
-detached process log and exit status remain local to the production host for operator diagnosis.
+The production workflow propagates the privileged deployment process exit status from the
+self-hosted runner, then uses a GitHub-hosted job to retry the public application smoke test during
+the rollout. The production runner must remain online for the deploy command; runner recovery is an
+operator responsibility and is not represented as application-level deployment resilience.
 
 | Material requirement | Implementation | Test / evidence | Status |
 | --- | --- | --- | --- |

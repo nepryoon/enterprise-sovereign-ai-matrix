@@ -114,30 +114,10 @@ jobs:
       url: https://matrix.neuromorphicinference.com
 
     steps:
-      - name: Start exact-commit deploy outside the runner lifecycle
-        env:
-          DEPLOY_SHA: ${{ github.sha }}
+      - name: Deploy exact commit
         run: |
-          status_file="/tmp/sovereign-matrix-deploy-${DEPLOY_SHA}.status"
-          log_file="/tmp/sovereign-matrix-deploy-${DEPLOY_SHA}.log"
-          rm -f "$status_file" "$log_file"
-
-          # Deploying the stack can restart the self-hosted runner. Detach the
-          # deploy process from Actions process tracking so that it can finish.
-          RUNNER_TRACKING_ID="" nohup setsid bash -c '
-            sudo -n /usr/local/sbin/deploy-sovereign-matrix "$1"
-            result=$?
-            printf "%s\n" "$result" >"$2"
-            exit "$result"
-          ' -- "$DEPLOY_SHA" "$status_file" >"$log_file" 2>&1 </dev/null &
-
-          deploy_pid=$!
-          sleep 5
-          if ! kill -0 "$deploy_pid" 2>/dev/null && [[ ! -f "$status_file" ]]; then
-            echo "Deploy process exited before recording a result" >&2
-            cat "$log_file" >&2
-            exit 1
-          fi
+          sudo -n /usr/local/sbin/deploy-sovereign-matrix \
+            "${{ github.sha }}"
 
   smoke-production:
     name: Smoke-test production

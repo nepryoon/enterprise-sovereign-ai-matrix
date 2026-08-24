@@ -346,6 +346,12 @@ class ExecutionService:
         )
         if event_type == "agent.completed" and node in self.AGENT_BRIEFINGS:
             recipient, message, evidence_refs = self.AGENT_BRIEFINGS[node]
+            if node == "policy-evaluator" and not state.get("approval_required", False):
+                recipient = "decision-finaliser"
+                message = (
+                    "Policy evaluation complete. No accountable-human escalation is required; "
+                    "finalise the approved low-risk decision record."
+                )
             self.emit(
                 execution,
                 "agent.message",
