@@ -186,11 +186,7 @@ export function MissionControl() {
             }
           />
           {state.error ? <div role="alert" className="error-banner">{state.error}</div> : null}
-          <div className="matrix-inspector">
-            <DecisionMatrix agents={agents} selected={selected?.id} onSelect={setSelected} />
-            <TaskInspector task={selected} agents={agents} onClose={() => setSelected(null)} />
-          </div>
-          <div className="theatre-stack">
+          <div className="theatre-stack" id="decision-theatre">
             <DecisionTheatre events={state.events} />
             <section className="event-shelf panel">
               <div>
@@ -214,6 +210,10 @@ export function MissionControl() {
                 )}
               </ol>
             </section>
+          </div>
+          <div className="matrix-inspector">
+            <DecisionMatrix agents={agents} selected={selected?.id} onSelect={setSelected} />
+            <TaskInspector task={selected} agents={agents} onClose={() => setSelected(null)} />
           </div>
         </div>
       </div>

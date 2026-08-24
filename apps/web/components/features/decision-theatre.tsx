@@ -26,7 +26,7 @@ export function DecisionTheatre({ events }: { events: TelemetryEvent[] }) {
     <section className="theatre-panel panel" aria-labelledby="theatre-heading">
       <header className="theatre-header">
         <div>
-          <span className="eyebrow">Decision theatre · persisted handoffs</span>
+          <span className="eyebrow">Decision Theatre · persisted handoffs</span>
           <h2 id="theatre-heading">Agent conversation</h2>
         </div>
         <label>
@@ -73,8 +73,8 @@ export function DecisionTheatre({ events }: { events: TelemetryEvent[] }) {
             </li>
           )) : (
             <li className="conversation-empty">
-              <strong>No handoffs yet</strong>
-              <p>Start the guided demo. Server-persisted agent briefings will appear here live.</p>
+              <strong>Decision Theatre ready</strong>
+              <p>Select a scenario and start the guided demo to stream persisted agent handoffs.</p>
             </li>
           )}
         </ol>
