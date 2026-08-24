@@ -13,7 +13,7 @@ test:
 	cd apps/api && pytest
 	cd apps/web && npm test
 test-integration:
-	cd apps/api && pytest -m integration
+	cd apps/api && pytest -m integration --no-cov
 build:
 	cd apps/web && npm run build
 compose-config:
@@ -27,7 +27,7 @@ logs:
 smoke:
 	./scripts/demo-smoke-test.sh
 security:
-	cd apps/api && pip-audit
+	cd apps/api && pip-audit .
 	cd apps/web && npm audit --audit-level=high
 	python scripts/scan-secrets.py
 ci: lint typecheck test build compose-config

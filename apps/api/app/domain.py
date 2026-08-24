@@ -212,6 +212,10 @@ class TelemetryEvent(BaseModel):
     route_reason: str | None = None
     fallback_allowed: bool | None = None
     policy_outcome: str | None = None
+    message_kind: str | None = None
+    message: str | None = None
+    recipient: str | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
     latency_ms: int | None = None
     prompt_tokens: int | None = None
     completion_tokens: int | None = None

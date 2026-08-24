@@ -12,6 +12,7 @@ complete.
 | Original phase × discipline matrix with ≥12 graph-correlated tasks | `apps/api/app/graph/workflow.py`, `apps/web/components/features/decision-matrix.tsx`, `reference-data.ts` | production frontend build; graph node IDs matched manually | Partial: definitions are static until events project each run |
 | Actual routes and deep links | `apps/web/app/{runs,governance,observability,architecture}`, `runs/[id]` | Next production route manifest | Verified routes; detail depth partial |
 | Operational shell, context, inspector, event shelf | `app-shell.tsx`, `mission-control.tsx`, `decision-matrix.tsx` | frontend component tests/build | Partial against full inspector contract |
+| Persisted agent conversation theatre | `services/executions.py`, `decision-theatre.tsx` | backend handoff regression + frontend component test | Implemented with synthetic, server-authored handoffs; external OSINT collection not claimed |
 | Responsive layout, touch targets, reduced motion | `apps/web/app/globals.css` | production build and six-route HTTP smoke; rendered browser inspection unavailable | Implemented; visual verification blocked |
 | Keyboard status/approval semantics | `approval-modal.tsx`, `decision-matrix.tsx`, `status-badge.tsx` | `apps/web/tests/components.test.tsx` | Tab trap, Escape dismissal and arrow navigation verified in Vitest |
 | Valid shadcn source configuration and component | `apps/web/components.json`, `components/ui/button.tsx` | lint/typecheck/build | Verified |

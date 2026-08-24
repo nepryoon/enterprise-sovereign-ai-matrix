@@ -4,7 +4,8 @@
    execution ID, sovereign placement, cost budget, and SSE state in the operational header.
 2. Start the guided high-risk scenario. Follow persisted tasks through Observe, Classify, and
    Analyse while inspecting the selected backend route, model, provider, residency, tokens,
-   latency, and evidence in the inspector.
+   latency, and evidence in the inspector. Open the Decision Theatre feed and show that each
+   specialist handoff has a server sequence, sender, recipient and evidence reference.
 3. At **Waiting approval**, open the governance record, review the material trade-off and evidence,
    enter an operator reason, and approve. Explain that Reject uses a separate audited path and
    remains `CANCELLED` after reload.
@@ -13,4 +14,3 @@
 5. Open **Architecture Proof** to connect the experience to FastAPI, LangGraph, PostgreSQL event
    persistence, same-origin Next.js proxying, deterministic inference, LiteLLM/Ollama and Langfuse
    boundaries, CI gates, and the documented single-node/checkpoint limitations.
-
