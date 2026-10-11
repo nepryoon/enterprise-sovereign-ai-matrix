@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Execution, TelemetryEvent } from "@/types";
@@ -46,5 +46,19 @@ describe("MissionControl approval dialog", () => {
     expect(await screen.findByRole("dialog", { name: "Human decision required" })).toBeInTheDocument();
     expect(api.getExecution).toHaveBeenCalledWith("exec-1");
     expect(stream.onEvent).not.toBeNull();
+  });
+});
+
+describe("MissionControl guided demo entry point", () => {
+  beforeEach(() => { vi.clearAllMocks(); stream.onEvent = null; });
+  it("renders the start button inside the panel the header link targets", () => {
+    render(<MissionControl />);
+    const link = screen.getByRole("link", { name: "Start guided demo" });
+    const target = link.getAttribute("href")?.split("#")[1];
+    expect(target).toBe("guided-demo");
+    const panel = document.getElementById(target!);
+    expect(panel).not.toBeNull();
+    const button = within(panel!).getByRole("button", { name: "Start guided demo" });
+    expect(button).toBeEnabled();
   });
 });
