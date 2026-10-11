@@ -13,6 +13,14 @@ from app.domain import ApprovalConflictError, ApprovalDecision, TelemetryEvent
 
 router = APIRouter(prefix="/api/v1")
 
+# An open stream must never look idle to a proxy or to the browser's stale-stream fallback.
+SSE_HEARTBEAT_SECONDS = 10
+SSE_HEADERS = {
+    # no-transform forbids intermediaries (including the web server) from compressing the stream.
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+}
+
 
 def service(request: Request):
     return request.app.state.container.service
@@ -228,6 +236,8 @@ def stream(
         queue = container.broker.subscribe(execution_id)
         seen: set[int] = set()
         try:
+            # First byte immediately, so clients and proxies see a live stream before any event.
+            yield ": connected\n\n"
             for event in container.repository.events(execution_id, last_event_id):
                 seen.add(event.sequence)
                 yield _sse(event)
@@ -235,7 +245,7 @@ def stream(
                     return
             while True:
                 try:
-                    event = queue.get(timeout=15)
+                    event = queue.get(timeout=SSE_HEARTBEAT_SECONDS)
                     if event.sequence in seen:
                         continue
                     seen.add(event.sequence)
@@ -250,7 +260,7 @@ def stream(
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers=SSE_HEADERS,
     )
 
 

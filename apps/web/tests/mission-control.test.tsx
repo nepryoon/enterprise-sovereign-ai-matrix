@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Execution, TelemetryEvent } from "@/types";
 
 const api = vi.hoisted(() => ({ createExecution: vi.fn(), decide: vi.fn(), getExecution: vi.fn() }));
-const stream = vi.hoisted(() => ({ onEvent: null as ((event: TelemetryEvent) => void) | null }));
+const stream = vi.hoisted(() => ({ onEvent: null as ((event: TelemetryEvent) => void) | null, activity: { current: Date.now() } }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 vi.mock("@/lib/api", () => ({ ...api, API_URL: "/api/v1" }));
 vi.mock("@/hooks/use-execution-stream", () => ({
-  useExecutionStream: (_id: string | null, onEvent: (event: TelemetryEvent) => void) => { stream.onEvent = onEvent; },
+  useExecutionStream: (_id: string | null, onEvent: (event: TelemetryEvent) => void) => { stream.onEvent = onEvent; return stream.activity; },
 }));
 
 import { MissionControl } from "@/components/mission-control";
@@ -18,7 +18,7 @@ const event = (event_type: string): TelemetryEvent => ({ schema_version: "1", ev
 const reconcileTo = async (status: Execution["status"]) => { api.getExecution.mockResolvedValueOnce(execution(status)); await act(async () => { stream.onEvent?.(event("execution.started")); }); };
 
 describe("MissionControl approval dialog", () => {
-  beforeEach(() => { vi.clearAllMocks(); stream.onEvent = null; });
+  beforeEach(() => { vi.clearAllMocks(); stream.onEvent = null; stream.activity.current = Date.now(); });
   it("stays dismissed while waiting and reopens when the execution re-enters WAITING_APPROVAL", async () => {
     const user = userEvent.setup();
     api.createExecution.mockResolvedValue(execution("WAITING_APPROVAL"));
@@ -33,5 +33,18 @@ describe("MissionControl approval dialog", () => {
     await reconcileTo("RUNNING");
     await reconcileTo("WAITING_APPROVAL");
     expect(screen.getByRole("dialog", { name: "Human decision required" })).toBeInTheDocument();
+  });
+
+  it("reconciles a silent stream with the server and opens the approval dialog", async () => {
+    const user = userEvent.setup();
+    api.createExecution.mockResolvedValue(execution("QUEUED"));
+    api.getExecution.mockResolvedValue(execution("WAITING_APPROVAL"));
+    render(<MissionControl />);
+    // Stream open but nothing delivered for longer than the idle window (a buffering proxy).
+    stream.activity.current = Date.now() - 10_000;
+    await user.click(screen.getByRole("button", { name: "Start guided demo" }));
+    expect(await screen.findByRole("dialog", { name: "Human decision required" })).toBeInTheDocument();
+    expect(api.getExecution).toHaveBeenCalledWith("exec-1");
+    expect(stream.onEvent).not.toBeNull();
   });
 });

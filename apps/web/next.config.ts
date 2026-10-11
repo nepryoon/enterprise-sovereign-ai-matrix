@@ -7,7 +7,11 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   async rewrites() {
     const apiOrigin = process.env.API_INTERNAL_URL ?? "http://api:8000";
-    return [{ source: "/api/v1/:path*", destination: `${apiOrigin}/api/v1/:path*` }];
+    // fallback: applied only after filesystem and dynamic routes, so the streaming route handler in
+    // app/api/v1/executions/[id]/stream wins over the generic (compressible) proxy.
+    return { beforeFiles: [], afterFiles: [], fallback: [
+      { source: "/api/v1/:path*", destination: `${apiOrigin}/api/v1/:path*` },
+    ] };
   },
   async headers() {
     return [{ source: "/:path*", headers: [
