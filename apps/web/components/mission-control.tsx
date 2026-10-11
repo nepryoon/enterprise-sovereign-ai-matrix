@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useMemo, useReducer, useState } from "react";
 
 import { ApprovalModal } from "@/components/approval-modal";
 import { AppShell, PageHeading } from "@/components/app-shell";
 import { DecisionMatrix, TaskInspector } from "@/components/features/decision-matrix";
 import { DecisionTheatre } from "@/components/features/decision-theatre";
 import type { Task } from "@/components/features/reference-data";
-import { useExecutionStream } from "@/hooks/use-execution-stream";
+import { useExecutionStream, type StreamConnection } from "@/hooks/use-execution-stream";
+import { useStaleStreamReconcile } from "@/hooks/use-stale-stream-reconcile";
 import { createExecution, decide, getExecution } from "@/lib/api";
 import { initialDashboardState, telemetryReducer } from "@/lib/telemetry";
 
@@ -23,7 +24,7 @@ export function MissionControl() {
   const executionId = state.execution?.execution_id ?? null;
 
   const connection = useCallback(
-    (value: "connecting" | "connected" | "reconnecting" | "error") =>
+    (value: StreamConnection) =>
       dispatch({ type: "connection", value }),
     [],
   );
@@ -44,7 +45,7 @@ export function MissionControl() {
     }
   }, [executionId]);
 
-  useExecutionStream(
+  const lastStreamActivity = useExecutionStream(
     executionId,
     (event) => {
       dispatch(event);
@@ -59,9 +60,19 @@ export function MissionControl() {
     connection,
   );
 
-  useEffect(() => {
+  // The server stays authoritative when the stream goes quiet: poll until it speaks again.
+  const status = state.execution?.status;
+  const nonTerminal = status === "QUEUED" || status === "RUNNING" || status === "WAITING_APPROVAL";
+  useStaleStreamReconcile(Boolean(executionId) && nonTerminal, lastStreamActivity, reconcile);
+
+  // Reopen the approval dialog whenever an execution (re)enters WAITING_APPROVAL. Adjusting state
+  // during render on a key change avoids the cascading render of a setState-in-effect.
+  const approvalKey = `${executionId}:${state.execution?.status}`;
+  const [seenApprovalKey, setSeenApprovalKey] = useState(approvalKey);
+  if (approvalKey !== seenApprovalKey) {
+    setSeenApprovalKey(approvalKey);
     if (state.execution?.status === "WAITING_APPROVAL") setApprovalOpen(true);
-  }, [state.execution?.execution_id, state.execution?.status]);
+  }
 
   async function start() {
     setBusy(true);

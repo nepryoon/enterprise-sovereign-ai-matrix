@@ -61,6 +61,7 @@ export function telemetryReducer(
       promptTokens: 0,
       completionTokens: 0,
       cost: 0,
+      simulated: false,
       outcome: "Pending",
     };
     agents[event.agent_id] = {
@@ -77,6 +78,8 @@ export function telemetryReducer(
       promptTokens: event.prompt_tokens ?? old.promptTokens,
       completionTokens: event.completion_tokens ?? old.completionTokens,
       cost: event.estimated_cost_eur ?? old.cost,
+      // Only invocation events (those carrying token counts) state whether the call was simulated.
+      simulated: event.prompt_tokens != null ? event.simulated === true : old.simulated,
       outcome:
         event.event_type === "agent.failed"
           ? "Failed"

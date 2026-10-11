@@ -28,6 +28,7 @@ smoke:
 	./scripts/demo-smoke-test.sh
 security:
 	cd apps/api && pip-audit .
-	cd apps/web && npm audit --audit-level=high
+	cd apps/web && npm audit --omit=dev --audit-level=high
+	cd apps/web && npm audit --audit-level=critical
 	python scripts/scan-secrets.py
 ci: lint typecheck test build compose-config

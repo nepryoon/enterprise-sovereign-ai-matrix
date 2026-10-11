@@ -287,7 +287,7 @@ Universal SSL deve mostrare certificato edge Active; Tunnel cifra il tratto Clou
 
 ## 18. CORS, CSP e URL applicativi
 
-Browser e API sono same-origin; `.env` ammette solo `https://matrix.neuromorphicinference.com`. SSE usa EventSource a `/api/v1/.../stream`; API invia `no-cache` e `X-Accel-Buffering: no`. Backend CSP `default-src 'none'; frame-ancestors 'none'`; frontend ha nosniff/referrer/permissions ma non CSP: configurarla al bordo prima del pubblico, includendo almeno script/style/connect necessari e `connect-src 'self'`. Link diretto non richiede iframe. Per embedding futuro usare esclusivamente `frame-ancestors 'self' https://www.neuromorphicinference.com`, mai wildcard; ciò richiede rimuovere/conciliare `X-Frame-Options: DENY` sulla risorsa embedded.
+Browser e API sono same-origin; `.env` ammette solo `https://matrix.neuromorphicinference.com`. SSE: il browser legge `/api/v1/executions/{id}/stream` con `fetch` (parser SSE); la route handler Next la inoltra senza compressione (`Content-Encoding: identity`) leggendo `API_INTERNAL_URL` a runtime; API e web inviano `Cache-Control: no-cache, no-transform` e `X-Accel-Buffering: no`; commento `: connected` immediato e heartbeat ogni 10 s; dopo 5 s di silenzio la UI interroga lo stato ogni 3 s. Backend CSP `default-src 'none'; frame-ancestors 'none'`; frontend ha nosniff/referrer/permissions ma non CSP: configurarla al bordo prima del pubblico, includendo almeno script/style/connect necessari e `connect-src 'self'`. Link diretto non richiede iframe. Per embedding futuro usare esclusivamente `frame-ancestors 'self' https://www.neuromorphicinference.com`, mai wildcard; ciò richiede rimuovere/conciliare `X-Frame-Options: DENY` sulla risorsa embedded.
 
 ## 19. Avvio completo
 

@@ -22,6 +22,13 @@ jobs:
         run: cd apps/web && npm audit --json > ../../npm-audit.json || true
       - name: Scan repository for high-confidence secrets
         run: python scripts/scan-secrets.py
+      # Blocking gates (ADR-009): no high/critical in the shipped tree, no critical anywhere.
+      # The full tree is gated at critical only because braces GHSA-vfj7-8cjw-p6xm (dev-only,
+      # via eslint-config-next) has no upstream fix.
+      - name: Block on high/critical npm advisories in production dependencies
+        run: cd apps/web && npm audit --omit=dev --audit-level=high
+      - name: Block on critical npm advisories in all dependencies
+        run: cd apps/web && npm audit --audit-level=critical
       - uses: actions/upload-artifact@v4
         if: always()
         with:

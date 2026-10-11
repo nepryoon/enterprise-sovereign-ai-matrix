@@ -153,7 +153,9 @@ distributed/restart-safe queue; LangGraph uses `InMemorySaver`; only fake infere
 deterministically replayed to an interrupted state after restart and live-provider replay fails
 closed; CPU-only sovereign inference has higher latency; production authentication is delegated
 to Cloudflare Access; commercial provider behaviour requires opt-in credentials; and the full
-observability stack has a larger memory footprint than the application-only profile. See
+observability stack has a larger memory footprint than the application-only profile. Unbuffered
+SSE delivery through the production web server is tested locally and in CI, but not yet re-checked
+behind Cloudflare on the public demo. See
 [release readiness](docs/RELEASE_READINESS.md).
 
 ## Roadmap

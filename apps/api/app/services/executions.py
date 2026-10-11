@@ -343,6 +343,7 @@ class ExecutionService:
             prompt_tokens=invocation.get("prompt_tokens"),
             completion_tokens=invocation.get("completion_tokens"),
             estimated_cost_eur=estimated_cost,
+            simulated=bool(invocation.get("simulated", False)),
         )
         if event_type == "agent.completed" and node in self.AGENT_BRIEFINGS:
             recipient, message, evidence_refs = self.AGENT_BRIEFINGS[node]

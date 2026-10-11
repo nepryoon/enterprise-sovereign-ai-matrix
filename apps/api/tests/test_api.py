@@ -112,8 +112,40 @@ def test_events_persist_and_sse_replays(client):
     }
     with client.stream("GET", f"/api/v1/executions/{body['execution_id']}/stream") as response:
         content = "".join(response.iter_text())
+        headers = response.headers
+    assert content.startswith(": connected\n\n")
     assert "event: execution.completed" in content
     assert '"schema_version":"1.0"' in content
+    # no-transform keeps compressing proxies (the Next.js server, a CDN) from buffering the stream.
+    assert headers["cache-control"] == "no-cache, no-transform"
+    assert headers["x-accel-buffering"] == "no"
+    assert headers["content-type"].startswith("text/event-stream")
+
+
+def test_open_stream_sends_first_byte_immediately_and_heartbeats(client, monkeypatch):
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.api import routes
+
+    assert routes.SSE_HEARTBEAT_SECONDS == 10
+    body = create(client, "HIGH_RISK", "Assess whether a production deployment should proceed")
+    assert body.json()["status"] == "WAITING_APPROVAL"
+    execution_id = UUID(body.json()["execution_id"])
+    # Capture the generator: the stream stays open while the run waits for a human.
+    monkeypatch.setattr(routes, "SSE_HEARTBEAT_SECONDS", 0.01)
+    monkeypatch.setattr(
+        routes, "StreamingResponse", lambda content, **kw: SimpleNamespace(content=content, **kw)
+    )
+    response = routes.stream(execution_id, SimpleNamespace(app=client.app))
+    assert response.headers["Cache-Control"] == "no-cache, no-transform"
+    frames = response.content
+    assert next(frames) == ": connected\n\n"
+    replay = [next(frames) for _ in range(200)]
+    assert any("event: approval.requested" in frame for frame in replay)
+    assert ": heartbeat\n\n" in replay
+    frames.close()
+    assert not client.app.state.container.broker._subscribers[execution_id]
 
 
 def test_validation_and_not_found(client):
@@ -179,3 +211,44 @@ def test_checkpoint_resume_after_application_restart(tmp_path):
     after = second.get(f"/api/v1/executions/{body['execution_id']}/events").json()
     assert sum(event["event_type"] == "routing.selected" for event in after) == 1
     assert len(after) > len(before)
+
+
+def test_runtime_discloses_fake_inference_mode(client):
+    runtime = client.get("/api/v1/runtime").json()
+    assert runtime["inference_mode"] == "fake"
+    assert "persistence" not in runtime
+
+
+def test_fake_invocation_events_and_metrics_are_marked_simulated(client):
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    metered = [event for event in events if event["prompt_tokens"] is not None]
+    assert [event["simulated"] for event in metered] == [True]
+    assert not any(event["simulated"] for event in events if event["prompt_tokens"] is None)
+    metrics = client.get("/api/v1/observability/metrics").json()
+    assert metrics["simulated_invocations"] == metrics["invocation_count"] == 1
+
+
+def test_live_client_invocation_events_are_not_marked_simulated(app, client):
+    from app.domain import ModelInvocation
+
+    class StubLiveInference:
+        def invoke(self, prompt, route, scenario):
+            return ModelInvocation(
+                model_class=route.model_class,
+                provider=route.provider,
+                model=route.model,
+                latency_ms=120,
+                prompt_tokens=7,
+                completion_tokens=4,
+                output="Risk LOW. Proceed with standard controls.",
+            )
+
+    app.state.container.engine.inference = StubLiveInference()
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    metered = [event for event in events if event["prompt_tokens"] is not None]
+    assert [event["simulated"] for event in metered] == [False]
+    metrics = client.get("/api/v1/observability/metrics").json()
+    assert metrics["invocation_count"] == 1
+    assert metrics["simulated_invocations"] == 0

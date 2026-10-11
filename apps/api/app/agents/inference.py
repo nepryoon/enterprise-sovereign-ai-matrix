@@ -45,6 +45,7 @@ class DeterministicFakeInference:
             prompt_tokens=max(1, len(prompt.split())),
             completion_tokens=len(output.split()),
             output=output,
+            simulated=True,
         )
 
 

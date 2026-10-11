@@ -1,6 +1,7 @@
 name: Integration CI
 on:
-  pull_request: {paths: ['apps/**', 'tests/**', 'docker-compose*.yml']}
+  pull_request:
+    paths: ['apps/**', 'tests/**', 'scripts/sse-through-web.sh', 'docker-compose*.yml', '.github/workflows/integration-ci.yml']
   workflow_dispatch:
 permissions: {contents: read}
 jobs:
@@ -13,3 +14,22 @@ jobs:
         with: {python-version: '3.13', cache: pip, cache-dependency-path: apps/api/pyproject.toml}
       - run: python -m pip install -e './apps/api[dev]'
       - run: cd apps/api && pytest tests/test_api.py tests/test_persistence.py
+
+  # An open SSE stream (run waiting for approval) must reach a browser-like client through the
+  # production standalone server, with Accept-Encoding: gzip, deflate, br. Fake inference only.
+  sse-through-web:
+    runs-on: ubuntu-latest
+    env: {RUN_LIVE_LLM_TESTS: 'false', NEXT_TELEMETRY_DISABLED: '1'}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13', cache: pip, cache-dependency-path: apps/api/pyproject.toml}
+      - run: python -m pip install -e './apps/api[dev]'
+      - uses: actions/setup-node@v4
+        with: {node-version-file: apps/web/.nvmrc, cache: npm, cache-dependency-path: apps/web/package-lock.json}
+      - run: npm ci --no-audit --no-fund
+        working-directory: apps/web
+      - run: npm run build
+        working-directory: apps/web
+      - run: ./scripts/sse-through-web.sh
+        env: {PYTHON: python}
