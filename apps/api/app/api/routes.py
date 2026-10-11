@@ -102,6 +102,7 @@ def metrics(request: Request):
         "completion_tokens": sum(event.completion_tokens or 0 for event in invocations),
         "estimated_cost_eur": round(sum(event.estimated_cost_eur or 0 for event in invocations), 8),
         "latency_ms": sum(event.latency_ms or 0 for event in invocations),
+        "simulated_invocations": sum(1 for event in invocations if event.simulated),
     }
 
 
@@ -148,6 +149,7 @@ def runtime(request: Request):
         "python": platform.python_version(),
         "executor": "single-process-thread",
         "checkpoint": "process-local-memory-with-fake-only-replay",
+        "inference_mode": request.app.state.settings.inference_mode,
     }
 
 

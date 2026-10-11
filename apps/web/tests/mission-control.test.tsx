@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Execution, TelemetryEvent } from "@/types";
 
-const api = vi.hoisted(() => ({ createExecution: vi.fn(), decide: vi.fn(), getExecution: vi.fn() }));
+const api = vi.hoisted(() => ({ createExecution: vi.fn(), decide: vi.fn(), getExecution: vi.fn(), getRuntime: vi.fn(() => new Promise(() => {})) }));
 const stream = vi.hoisted(() => ({ onEvent: null as ((event: TelemetryEvent) => void) | null, activity: { current: Date.now() } }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 vi.mock("@/lib/api", () => ({ ...api, API_URL: "/api/v1" }));

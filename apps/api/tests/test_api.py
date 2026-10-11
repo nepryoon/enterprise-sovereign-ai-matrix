@@ -211,3 +211,44 @@ def test_checkpoint_resume_after_application_restart(tmp_path):
     after = second.get(f"/api/v1/executions/{body['execution_id']}/events").json()
     assert sum(event["event_type"] == "routing.selected" for event in after) == 1
     assert len(after) > len(before)
+
+
+def test_runtime_discloses_fake_inference_mode(client):
+    runtime = client.get("/api/v1/runtime").json()
+    assert runtime["inference_mode"] == "fake"
+    assert "persistence" not in runtime
+
+
+def test_fake_invocation_events_and_metrics_are_marked_simulated(client):
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    metered = [event for event in events if event["prompt_tokens"] is not None]
+    assert [event["simulated"] for event in metered] == [True]
+    assert not any(event["simulated"] for event in events if event["prompt_tokens"] is None)
+    metrics = client.get("/api/v1/observability/metrics").json()
+    assert metrics["simulated_invocations"] == metrics["invocation_count"] == 1
+
+
+def test_live_client_invocation_events_are_not_marked_simulated(app, client):
+    from app.domain import ModelInvocation
+
+    class StubLiveInference:
+        def invoke(self, prompt, route, scenario):
+            return ModelInvocation(
+                model_class=route.model_class,
+                provider=route.provider,
+                model=route.model,
+                latency_ms=120,
+                prompt_tokens=7,
+                completion_tokens=4,
+                output="Risk LOW. Proceed with standard controls.",
+            )
+
+    app.state.container.engine.inference = StubLiveInference()
+    body = create(client).json()
+    events = client.get(f"/api/v1/executions/{body['execution_id']}/events").json()
+    metered = [event for event in events if event["prompt_tokens"] is not None]
+    assert [event["simulated"] for event in metered] == [False]
+    metrics = client.get("/api/v1/observability/metrics").json()
+    assert metrics["invocation_count"] == 1
+    assert metrics["simulated_invocations"] == 0

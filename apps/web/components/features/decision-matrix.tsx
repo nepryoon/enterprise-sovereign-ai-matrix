@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/status-badge";
+import { SimulatedTag } from "@/components/app-shell";
 import type { AgentView } from "@/types";
 import { agentFor, disciplines, phases, tasks, type Task } from "./reference-data";
 
@@ -75,6 +76,7 @@ export function DecisionMatrix({
         {agent && agent.promptTokens + agent.completionTokens > 0 ? (
           <span className="task-metrics">
             {agent.promptTokens + agent.completionTokens} tok · €{agent.cost.toFixed(5)}
+            <SimulatedTag show={agent.simulated} />
           </span>
         ) : null}
       </button>
@@ -185,8 +187,8 @@ export function TaskInspector({
         <div><dt>Policy</dt><dd>{agent?.policyOutcome ?? "Not evaluated"}</dd></div>
         {agent ? (
           <>
-            <div><dt>Latency</dt><dd>{agent.latency} ms</dd></div>
-            <div><dt>Tokens</dt><dd>{agent.promptTokens + agent.completionTokens}</dd></div>
+            <div><dt>Latency</dt><dd>{agent.latency} ms <SimulatedTag show={agent.simulated} /></dd></div>
+            <div><dt>Tokens</dt><dd>{agent.promptTokens + agent.completionTokens} <SimulatedTag show={agent.simulated} /></dd></div>
             <div><dt>Cost</dt><dd>€{agent.cost.toFixed(5)}</dd></div>
           </>
         ) : null}

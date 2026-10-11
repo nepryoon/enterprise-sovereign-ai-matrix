@@ -61,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.container = Container(repository, broker, engine, execution_service)
+    app.state.settings = settings
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RateLimitMiddleware, limit=settings.rate_limit_per_minute)
     app.add_middleware(

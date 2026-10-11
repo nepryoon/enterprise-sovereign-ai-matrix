@@ -42,7 +42,16 @@ export function decide(
   });
 }
 export interface ExecutionPage { items: Execution[]; total: number; page: number; page_size: number }
-export interface MetricsSummary { invocation_count: number; prompt_tokens: number; completion_tokens: number; estimated_cost_eur: number; latency_ms: number }
+export interface MetricsSummary { invocation_count: number; prompt_tokens: number; completion_tokens: number; estimated_cost_eur: number; latency_ms: number; simulated_invocations: number }
 export function listExecutions(params="page=1&page_size=25") { return request<ExecutionPage>(`/executions?${params}`); }
+export type InferenceMode = "fake" | "litellm";
+export interface RuntimeInfo { api_version: string; python: string; executor: string; checkpoint: string; inference_mode: InferenceMode }
+let runtimeRequest: Promise<RuntimeInfo> | null = null;
+/** Fetched once per page load; a failed request is not cached so the next caller retries. */
+export function getRuntime() {
+  runtimeRequest ??= request<RuntimeInfo>("/runtime").catch((error: unknown) => { runtimeRequest = null; throw error; });
+  return runtimeRequest;
+}
+export function resetRuntimeCache() { runtimeRequest = null; }
 export function getMetrics() { return request<MetricsSummary>("/observability/metrics"); }
 export function getPendingApprovals() { return request<{items:Execution[];total:number}>("/governance/approvals"); }

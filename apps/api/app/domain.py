@@ -165,6 +165,7 @@ class ModelInvocation(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     output: str
+    simulated: bool = False
 
 
 class CostRecord(BaseModel):
@@ -220,4 +221,5 @@ class TelemetryEvent(BaseModel):
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     estimated_cost_eur: float | None = None
+    simulated: bool = False
     trace_id: str | None = None
