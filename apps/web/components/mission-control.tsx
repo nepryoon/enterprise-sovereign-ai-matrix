@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useMemo, useReducer, useState } from "react";
 
 import { ApprovalModal } from "@/components/approval-modal";
 import { AppShell, PageHeading } from "@/components/app-shell";
@@ -59,9 +59,14 @@ export function MissionControl() {
     connection,
   );
 
-  useEffect(() => {
+  // Reopen the approval dialog whenever an execution (re)enters WAITING_APPROVAL. Adjusting state
+  // during render on a key change avoids the cascading render of a setState-in-effect.
+  const approvalKey = `${executionId}:${state.execution?.status}`;
+  const [seenApprovalKey, setSeenApprovalKey] = useState(approvalKey);
+  if (approvalKey !== seenApprovalKey) {
+    setSeenApprovalKey(approvalKey);
     if (state.execution?.status === "WAITING_APPROVAL") setApprovalOpen(true);
-  }, [state.execution?.execution_id, state.execution?.status]);
+  }
 
   async function start() {
     setBusy(true);
